@@ -47,19 +47,39 @@ class ShiftController extends Controller
         return response()->json(Shift::where('user_id', auth()->id())->get());
     }
 
-    // 店長が全従業員の「提出済み」希望を取得する
+    /**
+     * 【店長用】確定済みシフト（カレンダー表示用）
+     */
     public function adminIndex()
     {
-        // 従業員名も一緒に取得（Userモデルとのリレーションが必要）
-        return Shift::with('user')->where('admin_status', 'pending')->get();
+        return response()->json(Shift::with('user')->where('admin_status', 'approved')->get());
+    }
+
+    /**
+     * 【店長用】未承認シフト（申請一覧用）
+     */
+    public function pendingShifts()
+    {
+        return response()->json(Shift::with('user')->where('admin_status', 'pending')->orderBy('date')->get());
     }
     
-    // シフトを確定させる
+    /**
+     * 【店長用】シフトを確定（時間を上書き保存）する
+     */
     public function approve(Request $request, $id)
     {
+        $validated = $request->validate([
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+        ]);
+
         $shift = Shift::findOrFail($id);
-        $shift->update(['admin_status' => 'approved']);
+        $shift->update([
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'admin_status' => 'approved'
+        ]);
     
-        return back()->with('message', 'シフトを確定しました');
+        return response()->json(['message' => 'シフトを確定しました']);
     }
 }

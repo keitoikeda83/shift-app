@@ -1,14 +1,15 @@
 // resources/js/Pages/Dashboard.jsx
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
-import ShiftCalendar from '../ShiftCalendar'; // 自作カレンダーをインポート
+import { Head, router, usePage } from '@inertiajs/react';
+import ShiftCalendar from '../ShiftCalendar';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import axios from 'axios';
+import AdminDashboard from './AdminDashboard';
 
 export default function Dashboard() {
     const [shifts, setShifts] = useState([]);
@@ -17,6 +18,14 @@ export default function Dashboard() {
     const [status, setStatus] = useState('work');
     const [startTime, setStartTime] = useState('09:00');
     const [endTime, setEndTime] = useState('18:00');
+
+    // ログインユーザー情報を取得
+    const { auth } = usePage().props;
+
+    // 管理者の場合は別のコンポーネントを返す
+    if (auth.user.role === 'admin') {
+        return <AdminDashboard auth={auth} />;
+    }
 
     const fetchShifts = async () => {
         try {
@@ -71,7 +80,7 @@ export default function Dashboard() {
                     <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
                         {selectedDate && format(selectedDate, 'yyyy年MM月dd日')} の希望提出
                     </h2>
-                    
+
                     <div className="mt-6 space-y-6">
                         {/* 種類選択 */}
                         <div className="flex gap-4">

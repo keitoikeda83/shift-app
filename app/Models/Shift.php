@@ -14,6 +14,7 @@ class Shift extends Model
         'start_time',
         'end_time',
         'note',
+        'admin_status',
     ];
 
     /**
