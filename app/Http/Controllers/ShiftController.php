@@ -46,4 +46,20 @@ class ShiftController extends Controller
         // 確実にJSON形式で返す
         return response()->json(Shift::where('user_id', auth()->id())->get());
     }
+
+    // 店長が全従業員の「提出済み」希望を取得する
+    public function adminIndex()
+    {
+        // 従業員名も一緒に取得（Userモデルとのリレーションが必要）
+        return Shift::with('user')->where('admin_status', 'pending')->get();
+    }
+    
+    // シフトを確定させる
+    public function approve(Request $request, $id)
+    {
+        $shift = Shift::findOrFail($id);
+        $shift->update(['admin_status' => 'approved']);
+    
+        return back()->with('message', 'シフトを確定しました');
+    }
 }
