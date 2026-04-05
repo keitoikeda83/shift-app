@@ -1,19 +1,56 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import ShiftCalendar from '../ShiftCalendar'; 
-import { useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import ShiftCalendar from '../ShiftCalendar';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import Modal from '@/Components/Modal'; // Breezeのモーダルを使用
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 
 export default function Dashboard() {
-    // 仮のデータ（後にDBから取得）
-    const [shifts, setShifts] = useState([
-        { date: '2026-04-10', status: 'work' },
-        { date: '2026-04-15', status: 'off' },
-    ]);
+    const [shifts, setShifts] = useState([]);
     const [selectedDate, setSelectedDate] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    const fetchShifts = async () => {
+        try {
+            const response = await axios.get('/shifts');
+            setShifts(response.data);
+        } catch (error) {
+            console.error("データ取得失敗", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchShifts();
+    }, []);
+
+    // フォームの状態管理
+    const [status, setStatus] = useState('work'); // 'work' or 'off'
+    const [startTime, setStartTime] = useState('09:00');
+    const [endTime, setEndTime] = useState('18:00');
 
     const handleDateClick = (date) => {
         setSelectedDate(date);
+        setIsModalOpen(true);
+    };
+
+    const handleSave = (e) => {
+        e.preventDefault();
+        
+        router.post('/shifts', {
+            date: format(selectedDate, 'yyyy-MM-dd'),
+            status: status,
+            // 休み希望の場合はnullを送る
+            start_time: status === 'work' ? startTime : null,
+            end_time: status === 'work' ? endTime : null,
+        }, {
+            onSuccess: () => {
+                setIsModalOpen(false);
+                fetchShifts();
+                alert('保存しました！');
+            }
+        });
     };
 
     return (
@@ -23,32 +60,47 @@ export default function Dashboard() {
             <Head title="Dashboard" />
 
             <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex flex-col md:flex-row gap-8">
-                        {/* 左側：カレンダー */}
-                        <div className="w-full md:w-1/2 flex justify-center">
-                            <ShiftCalendar shifts={shifts} onDateClick={handleDateClick} />
-                        </div>
-
-                        {/* 右側：詳細表示 */}
-                        <div className="w-full md:w-1/2 border-l pl-8">
-                            <h3 className="font-bold text-lg mb-4 text-gray-700">
-                                {selectedDate ? format(selectedDate, 'yyyy年MM月dd日') : '日付を選択してください'}
-                            </h3>
-                            {selectedDate ? (
-                                <div className="space-y-4">
-                                    <p className="text-sm text-gray-600">この日の予定を入力または確認できます。</p>
-                                    <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-                                        希望を登録する
-                                    </button>
-                                </div>
-                            ) : (
-                                <p className="text-gray-400 italic">カレンダーの日付をクリックすると詳細が表示されます。</p>
-                            )}
-                        </div>
-                    </div>
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 flex justify-center">
+                    <ShiftCalendar shifts={shifts} onDateClick={handleDateClick} />
                 </div>
             </div>
+
+            {/* 入力モーダル */}
+            <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)}>
+                <form onSubmit={handleSave} className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
+                        {selectedDate && format(selectedDate, 'yyyy年MM月dd日')} の希望
+                    </h2>
+
+                    <div className="mt-6 space-y-6">
+                        {/* 種類選択 */}
+                        <div className="flex gap-4">
+                            <label className="flex items-center">
+                                <input type="radio" value="work" checked={status === 'work'} onChange={(e) => setStatus(e.target.value)} className="mr-2" />
+                                シフト希望（出勤）
+                            </label>
+                            <label className="flex items-center">
+                                <input type="radio" value="off" checked={status === 'off'} onChange={(e) => setStatus(e.target.value)} className="mr-2" />
+                                休み希望
+                            </label>
+                        </div>
+
+                        {/* 時間入力（シフト希望の時のみ表示） */}
+                        {status === 'work' && (
+                            <div className="flex items-center gap-2 animate-fadeIn">
+                                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
+                                <span>〜</span>
+                                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsModalOpen(false)}>キャンセル</SecondaryButton>
+                        <PrimaryButton>保存する</PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }
