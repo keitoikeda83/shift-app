@@ -58,7 +58,8 @@ export default function ShiftCalendar({ shifts = [], onDateClick }) {
                     );
                 })}
             </div>
-                    {/* 凡例 */}
+
+            {/* 凡例 */}
             <div className="p-4 bg-gray-50 flex gap-4 text-xs">
                 <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></span> 出勤希望</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded"></span> 休み希望</span>
