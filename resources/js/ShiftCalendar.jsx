@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, addMonths, subMonths, isBefore, startOfDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 export default function ShiftCalendar({ shifts = [], onDateClick }) {
@@ -31,12 +31,17 @@ export default function ShiftCalendar({ shifts = [], onDateClick }) {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const shift = shifts.find(s => s.date === dateStr);
                     const isSelectedMonth = isSameMonth(day, monthStart);
+                    const isPast = isBefore(day, startOfDay(new Date()));
 
                     return (
                         <div 
                             key={dateStr}
-                            onClick={() => onDateClick(day)}
-                            className={`min-h-[100px] border-b border-r p-1 cursor-pointer hover:bg-blue-50 ${!isSelectedMonth ? 'bg-gray-50 opacity-30' : ''}`}
+                            onClick={() => !isPast && onDateClick(day)}
+                            className={`min-h-[100px] border-b border-r p-1 ${
+                                isPast 
+                                    ? 'cursor-not-allowed' 
+                                    : 'cursor-pointer hover:bg-blue-50'
+                            } ${!isSelectedMonth ? 'opacity-30' : ''}`}
                         >
                             <div className="text-xs text-gray-500">{format(day, 'd')}</div>
                             
