@@ -141,106 +141,107 @@ export default function AdminDashboard({ auth }) {
                         </button>
                     </div>
 
-                    {/* CSV出力ボタン */}
-                    <div className="flex justify-between">
-                        <div></div>
-                        <button 
-                            onClick={handleExportCSV} 
-                            className="px-4 py-2 mb-4 bg-gray-600 text-white font-semibold rounded hover:bg-gray-700 shadow-sm transition-colors flex items-center"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            CSV出力
-                        </button>
-                    </div>
-
                     {/* === マトリックス表示エリア === */}
                     {activeTab === 'matrix' && (
-                        <div className="bg-white p-6 shadow-sm sm:rounded-lg">
-                            {/* 月切り替えコントロール */}
-                            <div className="flex justify-between items-center mb-4">
-                                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-4 py-2 border rounded hover:bg-gray-50">
-                                    &lt; 前月
-                                </button>
-                                <h3 className="text-xl font-bold">{format(currentMonth, 'yyyy年 MM月')}</h3>
-                                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 border rounded hover:bg-gray-50">
-                                    次月 &gt;
+                        <div>
+                            {/* CSV出力ボタン */}
+                            <div className="flex justify-between">
+                                <div></div>
+                                <button 
+                                    onClick={handleExportCSV} 
+                                    className="px-4 py-2 mb-4 bg-gray-600 text-white font-semibold rounded hover:bg-gray-700 shadow-sm transition-colors flex items-center"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    CSV出力
                                 </button>
                             </div>
-
-                            {/* テーブル本体（横スクロールコンテナ） */}
-                            <div className="overflow-x-auto relative shadow ring-1 ring-black ring-opacity-5 rounded">
-                                <table className="min-w-full divide-y divide-gray-300 border-collapse">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            {/* 左端固定の従業員列 */}
-                                            <th scope="col" className="sticky left-0 z-10 bg-gray-100 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 border-b border-r shadow-[1px_0_0_0_#e5e7eb] min-w-[120px]">
-                                                従業員
-                                            </th>
-                                            {/* 日付の列（1日〜月末まで生成） */}
-                                            {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
-                                                // その日の曜日を計算（0:日, 1:月, ..., 6:土）
-                                                const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                                                const weekDayIndex = dateObj.getDay();
-                                                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-
-                                                // 土日の文字色を変える
-                                                let textColor = "text-gray-900";
-                                                if (weekDayIndex === 0) textColor = "text-red-600"; // 日曜は赤
-                                                if (weekDayIndex === 6) textColor = "text-blue-600"; // 土曜は青
-                                            
-                                                return (
-                                                    <th key={day} scope="col" className={`px-3 py-2 text-center border-b border-r min-w-[90px] ${textColor}`}>
-                                                        <div className="text-sm font-semibold">{day}</div>
-                                                        <div className="text-xs font-normal">({weekDays[weekDayIndex]})</div>
-                                                    </th>
-                                                );
-                                            })}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 bg-white">
-                                        {employees.length > 0 ? employees.map(employee => (
-                                            <tr key={employee.id} className="hover:bg-gray-50">
-                                                {/* 左端固定の従業員名 */}
-                                                <td className="sticky left-0 z-10 bg-white whitespace-nowrap py-4 pl-4 pr-3 text-sm font-bold text-gray-900 border-r shadow-[1px_0_0_0_#e5e7eb]">
-                                                    {employee.name}
-                                                </td>
-                                                {/* 各日のシフト内容 */}
+                            <div className="bg-white p-6 shadow-sm sm:rounded-lg">
+                                {/* 月切り替えコントロール */}
+                                <div className="flex justify-between items-center mb-4">
+                                    <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-4 py-2 border rounded hover:bg-gray-50">
+                                        &lt; 前月
+                                    </button>
+                                    <h3 className="text-xl font-bold">{format(currentMonth, 'yyyy年 MM月')}</h3>
+                                    <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 border rounded hover:bg-gray-50">
+                                        次月 &gt;
+                                    </button>
+                                </div>
+                        
+                                {/* テーブル本体（横スクロールコンテナ） */}
+                                <div className="overflow-x-auto relative shadow ring-1 ring-black ring-opacity-5 rounded">
+                                    <table className="min-w-full divide-y divide-gray-300 border-collapse">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                {/* 左端固定の従業員列 */}
+                                                <th scope="col" className="sticky left-0 z-10 bg-gray-100 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 border-b border-r shadow-[1px_0_0_0_#e5e7eb] min-w-[120px]">
+                                                    従業員
+                                                </th>
+                                                {/* 日付の列（1日〜月末まで生成） */}
                                                 {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
-                                                    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                                    const shift = employee.shifts?.find(s => s.date === dateStr);
-                                                    
+                                                    // その日の曜日を計算（0:日, 1:月, ..., 6:土）
+                                                    const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                                    const weekDayIndex = dateObj.getDay();
+                                                    const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+                                                
+                                                    // 土日の文字色を変える
+                                                    let textColor = "text-gray-900";
+                                                    if (weekDayIndex === 0) textColor = "text-red-600"; // 日曜は赤
+                                                    if (weekDayIndex === 6) textColor = "text-blue-600"; // 土曜は青
+                                                
                                                     return (
-                                                        <td key={day} className="whitespace-nowrap px-2 py-3 text-sm text-center border-r">
-                                                            {shift ? (
-                                                                shift.status === 'work' ? (
-                                                                    // 出勤の場合は時間を縦に並べて見やすくする
-                                                                    <div className="flex flex-col items-center justify-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                                                        <span>{shift.start_time.substring(0, 5)}</span>
-                                                                        <span className="text-[10px] text-blue-400">|</span>
-                                                                        <span>{shift.end_time.substring(0, 5)}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    // 休みの場合
-                                                                    <div className="flex items-center justify-center rounded-md bg-red-50 px-2 py-3 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-                                                                        休
-                                                                    </div>
-                                                                )
-                                                            ) : (
-                                                                <span className="text-gray-300">-</span>
-                                                            )}
-                                                        </td>
+                                                        <th key={day} scope="col" className={`px-3 py-2 text-center border-b border-r min-w-[90px] ${textColor}`}>
+                                                            <div className="text-sm font-semibold">{day}</div>
+                                                            <div className="text-xs font-normal">({weekDays[weekDayIndex]})</div>
+                                                        </th>
                                                     );
                                                 })}
                                             </tr>
-                                        )) : (
-                                            <tr>
-                                                <td colSpan={32} className="py-8 text-center text-gray-500">
-                                                    登録されている従業員がいません
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 bg-white">
+                                            {employees.length > 0 ? employees.map(employee => (
+                                                <tr key={employee.id} className="hover:bg-gray-50">
+                                                    {/* 左端固定の従業員名 */}
+                                                    <td className="sticky left-0 z-10 bg-white whitespace-nowrap py-4 pl-4 pr-3 text-sm font-bold text-gray-900 border-r shadow-[1px_0_0_0_#e5e7eb]">
+                                                        {employee.name}
+                                                    </td>
+                                                    {/* 各日のシフト内容 */}
+                                                    {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
+                                                        const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                                        const shift = employee.shifts?.find(s => s.date === dateStr);
+                                                        
+                                                        return (
+                                                            <td key={day} className="whitespace-nowrap px-2 py-3 text-sm text-center border-r">
+                                                                {shift ? (
+                                                                    shift.status === 'work' ? (
+                                                                        // 出勤の場合は時間を縦に並べて見やすくする
+                                                                        <div className="flex flex-col items-center justify-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                                                            <span>{shift.start_time.substring(0, 5)}</span>
+                                                                            <span className="text-[10px] text-blue-400">|</span>
+                                                                            <span>{shift.end_time.substring(0, 5)}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        // 休みの場合
+                                                                        <div className="flex items-center justify-center rounded-md bg-red-50 px-2 py-3 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                                                                            休
+                                                                        </div>
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-gray-300">-</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={32} className="py-8 text-center text-gray-500">
+                                                        登録されている従業員がいません
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
