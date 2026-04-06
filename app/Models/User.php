@@ -29,4 +29,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * リレーション設定：このユーザーが持つシフト
+     */
+    public function shifts()
+    {
+        return $this->hasMany(Shift::class);
+    }
 }

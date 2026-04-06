@@ -50,9 +50,20 @@ class ShiftController extends Controller
     /**
      * 【店長用】確定済みシフト（カレンダー表示用）
      */
-    public function adminIndex()
+    public function adminIndex(Request $request)
     {
-        return response()->json(Shift::with('user')->where('admin_status', 'approved')->get());
+        // 画面から月（例: 2026-04）が送られてこなければ今月にする
+        $month = $request->query('month', date('Y-m'));
+
+        // roleが'user'（一般従業員）の人を全員取得し、対象月の確定済みシフトを結合する
+        $users = \App\Models\User::where('role', 'user')
+            ->with(['shifts' => function ($query) use ($month) {
+                $query->where('admin_status', 'approved')
+                      ->where('date', 'like', $month . '%');
+            }])
+            ->get();
+
+        return response()->json($users);
     }
 
     /**
