@@ -116,8 +116,8 @@ export default function AdminDashboard({ auth }) {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">店長ダッシュボード</h2>}>
-            <Head title="Admin Dashboard" />
+        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト管理</h2>}>
+            <Head title="シフト管理" />
 
             <div className="py-8">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -166,7 +166,7 @@ export default function AdminDashboard({ auth }) {
                                         次月 &gt;
                                     </button>
                                 </div>
-                        
+
                                 {/* テーブル本体（横スクロールコンテナ） */}
                                 <div className="overflow-x-auto relative shadow ring-1 ring-black ring-opacity-5 rounded">
                                     <table className="min-w-full divide-y divide-gray-300 border-collapse">
@@ -182,7 +182,7 @@ export default function AdminDashboard({ auth }) {
                                                     const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                                                     const weekDayIndex = dateObj.getDay();
                                                     const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-                                                
+
                                                     // 土日の文字色を変える
                                                     let textColor = "text-gray-900";
                                                     if (weekDayIndex === 0) textColor = "text-red-600"; // 日曜は赤
@@ -208,7 +208,7 @@ export default function AdminDashboard({ auth }) {
                                                     {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
                                                         const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                                                         const shift = employee.shifts?.find(s => s.date === dateStr);
-                                                        
+
                                                         return (
                                                             <td key={day} className="whitespace-nowrap px-2 py-3 text-sm text-center border-r">
                                                                 {shift ? (
