@@ -60,6 +60,61 @@ export default function AdminDashboard({ auth }) {
         }
     };
 
+    // CSVエクスポート処理
+    const handleExportCSV = () => {
+        if (employees.length === 0) {
+            alert('出力するデータがありません。');
+            return;
+        }
+
+        const daysInMonth = getDaysInMonth(currentMonth);
+        
+        // ヘッダー行を作成（従業員名, 1日, 2日, 3日...）
+        const header = ['従業員名', ...Array.from({ length: daysInMonth }, (_, i) => `${i + 1}日`)];
+        let csvContent = header.join(',') + '\n';
+
+        // 各従業員のデータ行を作成
+        employees.forEach(employee => {
+            const row = [employee.name]; // 1列目は従業員名
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                // 日付の文字列を作成 (例: 2026-04-01)
+                const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const shift = employee.shifts?.find(s => s.date === dateStr);
+                
+                if (shift) {
+                    if (shift.status === 'work') {
+                        // 出勤の場合は「09:00〜18:00」のように結合して出力
+                        const start = shift.start_time ? shift.start_time.substring(0, 5) : '';
+                        const end = shift.end_time ? shift.end_time.substring(0, 5) : '';
+                        row.push(`"${start}\n〜\n${end}"`);
+                    } else {
+                        // 休みの場合は「休」
+                        row.push('休');
+                    }
+                } else {
+                    // シフトが入っていない日は空欄
+                    row.push('');
+                }
+            }
+            csvContent += row.join(',') + '\n';
+        });
+
+        // Excelでの文字化けを防ぐためのBOM（Byte Order Mark）を付与
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+        
+        // ダウンロード用のリンクを生成して自動クリック
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `シフト表_${format(currentMonth, 'yyyy年MM月')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">店長ダッシュボード</h2>}>
             <Head title="Admin Dashboard" />
@@ -83,6 +138,18 @@ export default function AdminDashboard({ auth }) {
                             {pendingShifts.length > 0 && (
                                 <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingShifts.length}</span>
                             )}
+                        </button>
+                    </div>
+
+                    {/* CSV出力ボタン */}
+                    <div className="flex justify-between">
+                        <div></div>
+                        <button 
+                            onClick={handleExportCSV} 
+                            className="px-4 py-2 mb-4 bg-gray-600 text-white font-semibold rounded hover:bg-gray-700 shadow-sm transition-colors flex items-center"
+                        >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            CSV出力
                         </button>
                     </div>
 
