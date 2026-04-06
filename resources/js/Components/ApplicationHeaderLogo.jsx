@@ -1,10 +1,10 @@
-export default function ApplicationLogo(props) {
+export default function ApplicationHeaderLogo(props) {
     return (
         <img 
             {...props} 
             src="/images/麦源ロゴ_灰色.png"
             alt="アプリのロゴ" 
-            className="w-36 h-36 object-cover"
+            className="w-32 h-32 object-contain"
         />
     );
 }
