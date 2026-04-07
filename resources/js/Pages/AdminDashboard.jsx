@@ -13,7 +13,7 @@ export default function AdminDashboard({ auth }) {
     const [currentMonth, setCurrentMonth] = useState(new Date()); // 表示対象の月
     const [employees, setEmployees] = useState([]); // 従業員とシフトのデータ
     const [pendingShifts, setPendingShifts] = useState([]);
-
+    const [shiftFilter, setShiftFilter] = useState('all'); // 'all', 'approved', 'pending'
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingShift, setEditingShift] = useState(null);
     const [editStartTime, setEditStartTime] = useState('');
@@ -69,8 +69,8 @@ export default function AdminDashboard({ auth }) {
 
         const daysInMonth = getDaysInMonth(currentMonth);
         
-        // ヘッダー行を作成（従業員名, 1日, 2日, 3日...）
-        const header = ['従業員名', ...Array.from({ length: daysInMonth }, (_, i) => `${i + 1}日`)];
+        // ヘッダー行を作成（空白, 1日, 2日, 3日...）
+        const header = ['', ...Array.from({ length: daysInMonth }, (_, i) => `${i + 1}日`)];
         let csvContent = header.join(',') + '\n';
 
         // 各従業員のデータ行を作成
@@ -82,9 +82,10 @@ export default function AdminDashboard({ auth }) {
                 const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const shift = employee.shifts?.find(s => s.date === dateStr);
                 
-                if (shift) {
+                // シフトが存在し、かつ「確定済み（approved）」の場合のみ出力する
+                if (shift && shift.admin_status === 'approved') {
                     if (shift.status === 'work') {
-                        // 出勤の場合は「09:00〜18:00」のように結合して出力
+                        // 出勤の場合は時間を改行して出力
                         const start = shift.start_time ? shift.start_time.substring(0, 5) : '';
                         const end = shift.end_time ? shift.end_time.substring(0, 5) : '';
                         row.push(`"${start}\n〜\n${end}"`);
@@ -93,7 +94,7 @@ export default function AdminDashboard({ auth }) {
                         row.push('休');
                     }
                 } else {
-                    // シフトが入っていない日は空欄
+                    // シフトが入っていない日、または「未確定」の日は空欄にする
                     row.push('');
                 }
             }
@@ -154,6 +155,22 @@ export default function AdminDashboard({ auth }) {
                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     CSV出力
                                 </button>
+                                {/* 絞り込みラジオボタン
+                                <div className="flex items-center space-x-3 text-sm bg-gray-50 px-4 py-2 rounded-md shadow-sm border">
+                                    <span className="text-gray-500 font-bold">表示:</span>
+                                    <label className="flex items-center space-x-1 cursor-pointer">
+                                        <input type="radio" value="all" checked={shiftFilter === 'all'} onChange={(e) => setShiftFilter(e.target.value)} className="text-blue-600 focus:ring-blue-500" />
+                                        <span>すべて</span>
+                                    </label>
+                                    <label className="flex items-center space-x-1 cursor-pointer">
+                                        <input type="radio" value="approved" checked={shiftFilter === 'approved'} onChange={(e) => setShiftFilter(e.target.value)} className="text-blue-600 focus:ring-blue-500" />
+                                        <span>確定のみ</span>
+                                    </label>
+                                    <label className="flex items-center space-x-1 cursor-pointer">
+                                        <input type="radio" value="pending" checked={shiftFilter === 'pending'} onChange={(e) => setShiftFilter(e.target.value)} className="text-blue-600 focus:ring-blue-500" />
+                                        <span>未確定のみ</span>
+                                    </label>
+                                </div> */}
                             </div>
                             <div className="bg-white p-6 shadow-sm sm:rounded-lg">
                                 {/* 月切り替えコントロール */}
@@ -210,24 +227,47 @@ export default function AdminDashboard({ auth }) {
                                                         const shift = employee.shifts?.find(s => s.date === dateStr);
 
                                                         return (
-                                                            <td key={day} className="whitespace-nowrap px-2 py-3 text-sm text-center border-r">
-                                                                {shift ? (
-                                                                    shift.status === 'work' ? (
-                                                                        // 出勤の場合は時間を縦に並べて見やすくする
-                                                                        <div className="flex flex-col items-center justify-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                                                            <span>{shift.start_time.substring(0, 5)}</span>
-                                                                            <span className="text-[10px] text-blue-400">|</span>
-                                                                            <span>{shift.end_time.substring(0, 5)}</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        // 休みの場合
-                                                                        <div className="flex items-center justify-center rounded-md bg-red-50 px-2 py-3 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-                                                                            休
-                                                                        </div>
-                                                                    )
-                                                                ) : (
-                                                                    <span className="text-gray-300">-</span>
-                                                                )}
+                                                            <td key={day} className="whitespace-nowrap px-1 py-2 text-sm text-center border-r">
+                                                                {(() => {
+                                                                    // ① フィルター設定に合わないものは非表示（null）にする
+                                                                    if (shiftFilter !== 'all' && shift?.admin_status !== shiftFilter) {
+                                                                        return <span className="text-gray-200">-</span>;
+                                                                    }
+
+                                                                    if (shift) {
+                                                                        const isPending = shift.admin_status !== 'approved'; // 未確定かどうかの判定
+
+                                                                        return (
+                                                                            <div 
+                                                                                // ② 未確定の時だけクリックできるようにし、確認・確定モーダルを開く
+                                                                                onClick={() => isPending ? openEditModal(shift) : null}
+                                                                                className={`flex flex-col items-center justify-center rounded-md px-1 py-1 text-xs font-medium ring-1 ring-inset  ${
+                                                                                    isPending ? 'cursor-pointer hover:opacity-70 transition-opacity' : ''
+                                                                                } ${
+                                                                                    // ③ 確定/未確定、出勤/休み で色を細かく分ける
+                                                                                    shift.status === 'work' 
+                                                                                        ? (isPending ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/30' : 'bg-blue-50 text-blue-700 ring-blue-700/10')
+                                                                                        : (isPending ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/30' : 'bg-red-50 text-red-700 ring-red-600/10')
+                                                                                }`}
+                                                                            >
+                                                                                {/* ④ 未確定の場合は「未確定」というバッジを目立たせて表示 */}
+                                                                                {isPending && <span className="text-[9px] mb-0.5 font-bold text-yellow-600">未確定</span>}
+
+                                                                                {shift.status === 'work' ? (
+                                                                                    <>
+                                                                                        <span>{shift.start_time?.substring(0, 5)}</span>
+                                                                                        <span className="text-[9px] opacity-50">|</span>
+                                                                                        <span>{shift.end_time?.substring(0, 5)}</span>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <span className="py-1">休</span>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    // シフトが何も入っていない場合
+                                                                    return <span className="text-gray-200">-</span>;
+                                                                })()}
                                                             </td>
                                                         );
                                                     })}
