@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Shift;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -55,11 +56,11 @@ class ShiftController extends Controller
         // 画面から月（例: 2026-04）が送られてこなければ今月にする
         $month = $request->query('month', date('Y-m'));
 
-        // roleが'user'（一般従業員）の人を全員取得し、対象月の確定済みシフトを結合する
-        $users = \App\Models\User::where('role', 'user')
+        // roleが'user'（一般従業員）の人を全員取得し、対象月のシフト（未確定・確定すべて）を結合する
+        $users = User::where('role', 'user')
             ->with(['shifts' => function ($query) use ($month) {
-                $query->where('admin_status', 'approved')
-                      ->where('date', 'like', $month . '%');
+                // admin_status の絞り込みを外し、その月の全シフトを取得するように変更
+                $query->where('date', 'like', $month . '%');
             }])
             ->get();
 
