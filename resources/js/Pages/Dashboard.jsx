@@ -14,8 +14,8 @@ export default function Dashboard() {
     const [selectedDate, setSelectedDate] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [status, setStatus] = useState('work');
-    const [startTime, setStartTime] = useState('09:00');
-    const [endTime, setEndTime] = useState('18:00');
+    const [startTime, setStartTime] = useState('18:00');
+    const [endTime, setEndTime] = useState('23:00');
 
     // ログインユーザー情報を取得
     const { auth } = usePage().props;
