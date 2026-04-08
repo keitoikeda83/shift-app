@@ -31,16 +31,23 @@ export default function ShiftCalendar({ shifts = [], onDateClick }) {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const shift = shifts.find(s => s.date === dateStr);
                     const isSelectedMonth = isSameMonth(day, monthStart);
+                    // その日が「今日の0時0分」より前かどうかを判定
                     const isPast = isBefore(day, startOfDay(new Date()));
+                    // すでに申請済み（確定・未確定問わずシフトデータが存在する）かどうかを判定
+                    const isAlreadyApplied = !!shift;
+                    // クリック（申請）できない条件の統合
+                    const isDisabled = isPast || isAlreadyApplied;
 
                     return (
                         <div 
                             key={dateStr}
-                            onClick={() => !isPast && onDateClick(day)}
-                            className={`min-h-[100px] border-b border-r p-1 ${
-                                isPast 
-                                    ? 'cursor-not-allowed' 
-                                    : 'cursor-pointer hover:bg-blue-50'
+                            // 申請不可でなければクリックイベント（モーダルを開く）を発火
+                            onClick={() => !isDisabled && onDateClick(day)}
+                            // 状態に応じてカーソルを変更する
+                            className={`min-h-[100px] border-b border-r p-1 transition-colors ${
+                                isPast ? 'cursor-not-allowed' : 
+                                isAlreadyApplied ? 'cursor-default' : 
+                                'cursor-pointer hover:bg-blue-50'
                             } ${!isSelectedMonth ? 'opacity-30' : ''}`}
                         >
                             <div className="text-xs text-gray-500">{format(day, 'd')}</div>
