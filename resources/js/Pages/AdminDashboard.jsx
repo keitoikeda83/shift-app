@@ -246,12 +246,12 @@ export default function AdminDashboard({ auth }) {
                                                                                 } ${
                                                                                     // ③ 確定/未確定、出勤/休み で色を細かく分ける
                                                                                     shift.status === 'work' 
-                                                                                        ? (isPending ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/30' : 'bg-blue-50 text-blue-700 ring-blue-700/10')
-                                                                                        : (isPending ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/30' : 'bg-red-50 text-red-700 ring-red-600/10')
+                                                                                        ? (isPending ? 'bg-red-50 text-red-600 ring-red-600/10' : 'bg-green-50 text-green-600 ring-green-600/10')
+                                                                                        : (isPending ? 'bg-red-50 text-red-600 ring-red-600/10' : 'bg-gray-50 text-gray-700 ring-gray-700/10')
                                                                                 }`}
                                                                             >
                                                                                 {/* ④ 未確定の場合は「未確定」というバッジを目立たせて表示 */}
-                                                                                {isPending && <span className="text-[9px] mb-0.5 font-bold text-yellow-600">未確定</span>}
+                                                                                {isPending && <span className="text-[9px] mb-0.5 font-bold text-red-600">未確定</span>}
 
                                                                                 {shift.status === 'work' ? (
                                                                                     <>
