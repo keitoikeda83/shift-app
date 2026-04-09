@@ -16,6 +16,7 @@ export default function Dashboard() {
     const [status, setStatus] = useState('work');
     const [startTime, setStartTime] = useState('18:00');
     const [endTime, setEndTime] = useState('23:00');
+    const [flashMessage, setFlashMessage] = useState('');
 
     // ログインユーザー情報を取得
     const { auth } = usePage().props;
@@ -54,7 +55,12 @@ export default function Dashboard() {
             onSuccess: () => {
                 setIsModalOpen(false);
                 fetchShifts();
-                alert('希望を送信しました。店長の承認をお待ちください。');
+                setFlashMessage(
+                    <span>
+                        希望を送信しました。<br className="block sm:hidden" />店長の承認をお待ちください。
+                    </span>
+                );
+                setTimeout(() => setFlashMessage(''), 4000); // 文字が少し長いので4秒後に消す
             }
         });
     };
@@ -64,6 +70,14 @@ export default function Dashboard() {
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト表</h2>}
         >
             <Head title="シフト表" />
+
+            {flashMessage && (
+                <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center space-x-2 transition-all w-max max-w-[90vw]">
+                    {/* インフォメーションのアイコン */}
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span className="font-bold text-sm leading-tight">{flashMessage}</span>
+                </div>
+            )}
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">

@@ -18,6 +18,7 @@ export default function AdminDashboard({ auth }) {
     const [editingShift, setEditingShift] = useState(null);
     const [editStartTime, setEditStartTime] = useState('');
     const [editEndTime, setEditEndTime] = useState('');
+    const [flashMessage, setFlashMessage] = useState('');
 
     // データの取得
     const fetchAdminData = async () => {
@@ -54,7 +55,8 @@ export default function AdminDashboard({ auth }) {
             });
             setIsEditModalOpen(false);
             fetchAdminData();
-            alert('シフトを確定しました');
+            setFlashMessage('シフトを確定しました');
+            setTimeout(() => setFlashMessage(''), 3000); // 3秒後に自動で消す
         } catch (error) {
             console.error("承認エラー", error);
         }
@@ -119,6 +121,14 @@ export default function AdminDashboard({ auth }) {
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト管理</h2>}>
             <Head title="シフト管理" />
+
+            {flashMessage && (
+                <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center space-x-2 transition-all">
+                    {/* チェックマークのアイコン */}
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                    <span className="font-bold text-sm">{flashMessage}</span>
+                </div>
+            )}
 
             <div className="py-8">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
