@@ -14,29 +14,25 @@ class ShiftController extends Controller
      */
     public function store(Request $request)
     {
-        // バリデーション
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'status' => 'required|in:work,off',
-            'start_time' => 'nullable|string',
-            'end_time' => 'nullable|string',
-        ]); 
+        // 「一括申請（dates）」と「単一申請（date）」の両方に対応させる
+        $dates = $request->has('dates') ? $request->dates : [$request->date];
 
-        // データの保存
-        Shift::updateOrCreate(
-            [
-                'user_id' => Auth::id(),
-                'date' => $validated['date']
-            ],
-            [
-                'status' => $validated['status'],
-                // statusがworkの時だけ時間を入れ、それ以外はnullにする
-                'start_time' => ($validated['status'] === 'work') ? $validated['start_time'] : null,
-                'end_time' => ($validated['status'] === 'work') ? $validated['end_time'] : null,
-            ]
-        );  
+        foreach ($dates as $date) {
+            \App\Models\Shift::updateOrCreate(
+                [
+                    'user_id' => auth()->id(),
+                    'date' => $date,
+                ],
+                [
+                    'status' => $request->status,
+                    'start_time' => $request->start_time,
+                    'end_time' => $request->end_time,
+                    'admin_status' => 'pending' // 未確定状態
+                ]
+            );
+        }
 
-        return back();
+        return redirect()->back();
     }
 
     /**
