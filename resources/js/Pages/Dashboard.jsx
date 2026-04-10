@@ -91,18 +91,17 @@ export default function Dashboard() {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト表</h2>}>
+        <AuthenticatedLayout>
             <Head title="シフト表" />
 
             {flashMessage && (
                 <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-xl shadow-2xl z-[100] flex items-center space-x-2 transition-all w-max max-w-[90vw] text-left">
-                    {/* インフォメーションのアイコン */}
                     <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span className="font-bold text-sm leading-tight">{flashMessage}</span>
                 </div>
             )}
 
-            <div className="py-8">
+            <div className="pt-4 pb-24">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     
                     {/* 一括申請モードのスイッチ */}
