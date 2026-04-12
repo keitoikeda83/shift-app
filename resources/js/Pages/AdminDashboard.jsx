@@ -307,7 +307,7 @@ export default function AdminDashboard({ auth }) {
                                                                                 } ${
                                                                                     // ③ 確定/未確定、出勤/休み で色を細かく分ける
                                                                                     selectedShiftIds.includes(shift.id)
-                                                                                        ? 'bg-red-100 text-red-500 ring-red-500' // 選択中の場合は青色
+                                                                                        ? 'relative bg-blue-100 text-blue-700 ring-transparent after:absolute after:inset-0 after:rounded-md after:ring-2 after:ring-blue-500 after:animate-pulse after:pointer-events-none' // 選択中の色
                                                                                         : shift.status === 'work' 
                                                                                             ? (isPending ? 'bg-red-50 text-red-600 ring-red-600/10' : 'bg-green-50 text-green-600 ring-green-600/10')
                                                                                             : (isPending ? 'bg-red-50 text-red-600 ring-red-600/10' : 'bg-gray-50 text-gray-700 ring-gray-700/10')
