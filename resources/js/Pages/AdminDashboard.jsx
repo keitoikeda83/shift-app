@@ -407,9 +407,9 @@ export default function AdminDashboard({ auth }) {
                         ) : (
                             editingShift && (
                                 <>
-                                    <p><strong>従業員:</strong> {editingShift.user?.name}</p>
-                                    <p><strong>日付:</strong> {editingShift.date}</p>
-                                    <p><strong>希望種類:</strong> {editingShift.status === 'work' ? '出勤' : '休み'}</p>
+                                    <p className="text-gray-700"><strong>従業員:</strong> {editingShift.user?.name}</p>
+                                    <p className="text-gray-700"><strong>日付:</strong> {editingShift.date}</p>
+                                    <p className="text-gray-700"><strong>希望種類:</strong> {editingShift.status === 'work' ? '出勤' : '休み'}</p>
                                 </>
                             )
                         )}
@@ -417,16 +417,18 @@ export default function AdminDashboard({ auth }) {
                     {((!isBulkEdit && editingShift?.status === 'work') || 
                       (isBulkEdit && employees.flatMap(e => e.shifts || []).filter(s => selectedShiftIds.includes(s.id)).some(s => s.status === 'work'))) && (
                         <div>
-                            <div className="mt-2 text-sm text-gray-700">
-                                <strong>希望種類:</strong> {
-                                    [...new Set(
-                                        employees.flatMap(e => e.shifts || [])
-                                            .filter(s => selectedShiftIds.includes(s.id))
-                                            .map(s => s.status === 'work' ? '出勤' : '休み')
-                                    )].join('、')
-                                }
-                            </div>                             
-                            <label className="block text-sm font-medium text-gray-700 mb-1 mt-3">
+                            {isBulkEdit && (
+                                <div className="mt-2 text-gray-700">
+                                    <strong>希望種類:</strong> {
+                                        [...new Set(
+                                            employees.flatMap(e => e.shifts || [])
+                                                .filter(s => selectedShiftIds.includes(s.id))
+                                                .map(s => s.status === 'work' ? '出勤' : '休み')
+                                        )].join('、')
+                                    }
+                                </div>
+                            )}
+                            <label className="block font-medium text-gray-700 mb-1 mt-3">
                                 <strong>確定時間の{isBulkEdit ? '一括' : ''}編集</strong>
                             </label>
                             <div className="flex items-center gap-2">
