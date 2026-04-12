@@ -301,7 +301,7 @@ export default function AdminDashboard({ auth }) {
                                                                         return (
                                                                             <div 
                                                                                 // ② 未確定の時だけクリックできるようにし、確認・確定モーダルを開く
-                                                                                onClick={() => handleShiftClick(shift)}
+                                                                                onClick={() => handleShiftClick({ ...shift, user: employee })}
                                                                                 className={`flex flex-col items-center justify-center rounded-md px-1 py-1 text-xs font-medium ring-1 ring-inset  ${
                                                                                     isPending ? 'cursor-pointer hover:opacity-70 transition-opacity' : ''
                                                                                 } ${
@@ -392,7 +392,7 @@ export default function AdminDashboard({ auth }) {
             <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
                 <form onSubmit={handleApprove} className="p-6">
                     <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
-                        {isBulkEdit ? 'シフトの一括確定' : 'シフトの確認と確定'}
+                        {isBulkEdit ? 'シフト一括確定' : 'シフト確認と確定'}
                     </h2>
                     
                     <div className="mt-4 space-y-4">
@@ -429,7 +429,7 @@ export default function AdminDashboard({ auth }) {
                                 </div>
                             )}
                             <label className="block font-medium text-gray-700 mb-1 mt-3">
-                                <strong>確定時間の{isBulkEdit ? '一括' : ''}編集</strong>
+                                <strong>シフト時間の{isBulkEdit ? '一括' : ''}編集</strong>
                             </label>
                             <div className="flex items-center gap-2">
                                 <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
