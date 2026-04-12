@@ -90,4 +90,21 @@ class ShiftController extends Controller
     
         return response()->json(['message' => 'シフトを確定しました']);
     }
+
+    /**
+     * 【店長用】複数のシフトを一括で確定する
+     */
+    public function bulkApprove(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:shifts,id',
+        ]);
+
+        \App\Models\Shift::whereIn('id', $validated['ids'])
+            ->where('admin_status', 'pending')
+            ->update(['admin_status' => 'approved']);
+
+        return response()->json(['message' => count($validated['ids']) . '件のシフトを確定しました']);
+    }
 }

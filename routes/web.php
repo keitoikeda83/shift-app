@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/admin/shifts', [ShiftController::class, 'adminIndex'])->name('admin.shifts.index');
     Route::get('/admin/shifts/pending', [ShiftController::class, 'pendingShifts'])->name('admin.shifts.pending');
     Route::put('/admin/shifts/{id}/approve', [ShiftController::class, 'approve'])->name('admin.shifts.approve');
+    Route::put('/admin/shifts/bulk-approve', [ShiftController::class, 'bulkApprove'])->name('admin.shifts.bulkApprove');
 });
 
 require __DIR__.'/auth.php';
