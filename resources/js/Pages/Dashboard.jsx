@@ -108,7 +108,7 @@ export default function Dashboard() {
                     {/* 一括申請モードのスイッチ */}
                     <div className="flex justify-end mb-4 px-4 sm:px-0">
                         <label className="flex items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-sm border">
-                            <span className="mr-3 text-sm font-bold text-gray-700">一括申請モード</span>
+                            <span className="mr-3 text-sm font-bold text-gray-700">一括選択</span>
                             <div className="relative">
                                 <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={() => {
                                     setIsBulkMode(!isBulkMode);

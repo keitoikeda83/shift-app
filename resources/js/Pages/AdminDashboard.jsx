@@ -215,7 +215,7 @@ export default function AdminDashboard({ auth }) {
                             {/* CSV出力ボタン */}
                             <div className="flex justify-between items-center mb-2">
                                 <label className="flex items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-sm border">
-                                    <span className="mr-3 text-sm font-bold text-gray-700">一括確定モード</span>
+                                    <span className="mr-3 text-sm font-bold text-gray-700">一括選択</span>
                                     <div className="relative">
                                         <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={() => {
                                             setIsBulkMode(!isBulkMode);
