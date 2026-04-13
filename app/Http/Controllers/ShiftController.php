@@ -18,7 +18,7 @@ class ShiftController extends Controller
         $dates = $request->has('dates') ? $request->dates : [$request->date];
 
         foreach ($dates as $date) {
-            \App\Models\Shift::updateOrCreate(
+            Shift::updateOrCreate(
                 [
                     'user_id' => auth()->id(),
                     'date' => $date,
@@ -101,7 +101,7 @@ class ShiftController extends Controller
             'ids.*' => 'exists:shifts,id',
         ]);
 
-        \App\Models\Shift::whereIn('id', $validated['ids'])
+        Shift::whereIn('id', $validated['ids'])
             ->where('admin_status', 'pending')
             ->update(['admin_status' => 'approved']);
 
@@ -113,7 +113,7 @@ class ShiftController extends Controller
      */
     public function reject($id)
     {
-        $shift = \App\Models\Shift::findOrFail($id);
+        $shift = Shift::findOrFail($id);
         $shift->delete();
         
         return response()->json(['message' => '申請を却下しました']);
@@ -129,7 +129,7 @@ class ShiftController extends Controller
             'ids.*' => 'exists:shifts,id',
         ]);
 
-        \App\Models\Shift::whereIn('id', $validated['ids'])->delete();
+        Shift::whereIn('id', $validated['ids'])->delete();
         
         return response()->json(['message' => count($validated['ids']) . '件の申請を却下しました']);
     }
