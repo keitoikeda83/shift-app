@@ -413,7 +413,7 @@ export default function AdminDashboard({ auth }) {
             <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
                 <form onSubmit={handleApprove} className="p-6">
                     <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
-                        {isBulkEdit ? 'シフト一括確定' : 'シフト申請'}
+                        シフト申請
                     </h2>
                     
                     <div className="mt-4 space-y-4">
