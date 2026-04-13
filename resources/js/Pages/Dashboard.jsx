@@ -19,6 +19,7 @@ export default function Dashboard() {
     const [flashMessage, setFlashMessage] = useState('');
     const [isBulkMode, setIsBulkMode] = useState(false);
     const [selectedDates, setSelectedDates] = useState([]);
+    const [lockedPeriods, setLockedPeriods] = useState([]);
 
     // ログインユーザー情報を取得
     const { auth } = usePage().props;
@@ -37,12 +38,25 @@ export default function Dashboard() {
         }
     };
 
+    const fetchLocked = async () => {
+        const response = await axios.get('/shifts/locked');
+        setLockedPeriods(response.data);
+    };
+
     useEffect(() => {
         fetchShifts();
+        fetchLocked();
     }, []);
 
     // 日付クリック時
     const handleDateClick = (date) => {
+        const day = date.getDate();
+        const monthStr = format(date, 'yyyy-MM');
+        const half = day <= 15 ? 1 : 2;
+        if (lockedPeriods.includes(`${monthStr}-${half}`)) {
+            alert('この期間のシフトはすでに店長によって確定・反映されているため、申請できません。');
+            return;
+        }
         if (isBulkMode) {
             // 一括モード時は、配列に追加したり外したりする
             const dateStr = format(date, 'yyyy-MM-dd');

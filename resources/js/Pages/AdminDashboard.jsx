@@ -25,18 +25,20 @@ export default function AdminDashboard({ auth }) {
 
     // セルをクリックした時の処理
     const handleShiftClick = (shift) => {
+        const isApproved = shift.admin_status === 'approved';
+        
         if (!isBulkMode) {
-            // 通常モード時は未確定ならモーダルを開く
-            if (shift.admin_status !== 'approved') openEditModal(shift);
+            // 通常モード：確定済み（緑）でなければ編集モーダルを開く
+            if (!isApproved) openEditModal(shift);
             return;
         }
 
-        // 一括モード時は未確定のみ選択可能にする
-        if (shift.admin_status === 'pending') {
+        // 一括選択モード：確定済み以外（未確定・仮確定）を選択可能にする
+        if (!isApproved) {
             setSelectedShiftIds(prev => 
                 prev.includes(shift.id) 
-                    ? prev.filter(id => id !== shift.id) // 既に選択されていれば解除
-                    : [...prev, shift.id]                // 選択されていなければ追加
+                    ? prev.filter(id => id !== shift.id) 
+                    : [...prev, shift.id]
             );
         }
     };
@@ -90,32 +92,53 @@ export default function AdminDashboard({ auth }) {
         setIsEditModalOpen(true);
     };
 
-    const handleApprove = async (e) => {
+    // ステータス更新（仮確定にする / 未確定に戻す）
+    const handleStatusUpdate = async (e, targetStatus) => {
         e.preventDefault();
         try {
             if (isBulkEdit) {
-                // 一括確定のAPIを叩く
-                await axios.put('/admin/shifts/bulk-approve', {
+                // 一括更新のAPIを叩く
+                await axios.put('/admin/shifts/bulk-update', {
                     ids: selectedShiftIds,
                     start_time: editStartTime,
                     end_time: editEndTime,
+                    admin_status: targetStatus // 'tentative' または 'pending'
                 });
                 setSelectedShiftIds([]);
                 setIsBulkMode(false);
             } else {
-                // 単一確定のAPIを叩く
-                await axios.put(`/admin/shifts/${editingShift.id}/approve`, {
+                // 単一更新のAPIを叩く
+                await axios.put(`/admin/shifts/${editingShift.id}/update-status`, {
                     start_time: editStartTime,
                     end_time: editEndTime,
+                    admin_status: targetStatus
                 });
             }
 
             setIsEditModalOpen(false);
             fetchAdminData();
-            setFlashMessage(isBulkEdit ? '選択したシフトを一括確定しました' : 'シフトを確定しました');
+            setFlashMessage(targetStatus === 'tentative' ? '仮確定にしました' : '未確定に戻しました');
             setTimeout(() => setFlashMessage(''), 3000);
         } catch (error) {
-            console.error("承認エラー", error);
+            console.error("ステータス更新エラー", error);
+        }
+    };
+
+    // シフト反映（確定して従業員画面へ反映、未確定を削除）
+    const handlePublish = async (period) => {
+        const periodText = period === 1 ? '前半(1日~15日)' : '後半(16日~末日)';
+        if (!window.confirm(`本当に${periodText}のシフトを確定し、反映しますか？\n※残っている未確定申請は削除され、従業員は申請不可になります。`)) return;
+        
+        try {
+            await axios.post('/admin/shifts/publish', {
+                month: format(currentMonth, 'yyyy-MM'),
+                period: period // 1:前半, 2:後半
+            });
+            fetchAdminData();
+            setFlashMessage('シフトを確定し、反映しました');
+            setTimeout(() => setFlashMessage(''), 3000);
+        } catch (error) {
+            console.error("反映エラー", error);
         }
     };
 
@@ -212,26 +235,24 @@ export default function AdminDashboard({ auth }) {
                     {/* === マトリックス表示エリア === */}
                     {activeTab === 'matrix' && (
                         <div>
-                            {/* CSV出力ボタン */}
-                            <div className="flex justify-between items-center mb-2">
+                            {/* コントロールエリア */}
+                            <div className="flex justify-between items-center mb-2 flex-wrap gap-4">
                                 <label className="flex items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-sm border">
-                                    <span className="mr-3 text-sm font-bold text-gray-700">一括確定モード</span>
+                                    <span className="mr-3 text-sm font-bold text-gray-700">一括選択モード</span>
                                     <div className="relative">
-                                        <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={() => {
-                                            setIsBulkMode(!isBulkMode);
-                                            setSelectedShiftIds([]); 
-                                        }} />
+                                        <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={() => { setIsBulkMode(!isBulkMode); setSelectedShiftIds([]); }} />
                                         <div className={`block w-12 h-6 rounded-full transition-colors ${isBulkMode ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                                         <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isBulkMode ? 'transform translate-x-6' : ''}`}></div>
                                     </div>
                                 </label>
-                                <button 
-                                    onClick={handleExportCSV} 
-                                    className="px-4 py-2 mb-4 bg-gray-600 text-white font-semibold rounded hover:bg-gray-700 shadow-sm transition-colors flex items-center"
-                                >
-                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                    CSV出力
-                                </button>
+                                
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => handlePublish(1)} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded shadow-sm hover:bg-indigo-700">前半を反映(1~15日)</button>
+                                    <button onClick={() => handlePublish(2)} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded shadow-sm hover:bg-indigo-700">後半を反映(16~末日)</button>
+                                    <button onClick={handleExportCSV} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded hover:bg-gray-700 shadow-sm flex items-center">
+                                        CSV出力
+                                    </button>
+                                </div>
                             </div>
                             <div className="bg-white p-6 shadow-sm sm:rounded-lg">
                                 {/* 月切り替えコントロール */}
@@ -296,25 +317,28 @@ export default function AdminDashboard({ auth }) {
                                                                     }
 
                                                                     if (shift) {
-                                                                        const isPending = shift.admin_status !== 'approved'; // 未確定かどうかの判定
+                                                                        const isPending = shift.admin_status === 'pending'; 
+                                                                        const isTentative = shift.admin_status === 'tentative';
+                                                                        const isApproved = shift.admin_status === 'approved';
 
                                                                         return (
                                                                             <div 
-                                                                                // ② 未確定の時だけクリックできるようにし、確認・確定モーダルを開く
                                                                                 onClick={() => handleShiftClick({ ...shift, user: employee })}
-                                                                                className={`flex flex-col items-center justify-center rounded-md px-1 py-1 text-xs font-medium ring-1 ring-inset  ${
-                                                                                    isPending ? 'cursor-pointer hover:opacity-70 transition-opacity' : ''
+                                                                                className={`flex flex-col items-center justify-center rounded-md px-1 py-1 text-xs font-medium ring-1 ring-inset ${
+                                                                                    !isApproved ? 'cursor-pointer hover:opacity-70 transition-opacity' : ''
                                                                                 } ${
-                                                                                    // ③ 確定/未確定、出勤/休み で色を細かく分ける
                                                                                     selectedShiftIds.includes(shift.id)
-                                                                                        ? 'relative bg-blue-100 text-blue-700 ring-transparent after:absolute after:inset-0 after:rounded-md after:ring-2 after:ring-blue-500 after:animate-pulse after:pointer-events-none' // 選択中の色
-                                                                                        : shift.status === 'work' 
-                                                                                            ? (isPending ? 'bg-red-50 text-red-600 ring-red-600/10' : 'bg-green-50 text-green-600 ring-green-600/10')
-                                                                                            : (isPending ? 'bg-red-50 text-red-600 ring-red-600/10' : 'bg-gray-50 text-gray-700 ring-gray-700/10')
+                                                                                        ? 'relative bg-blue-100 text-blue-700 ring-transparent after:absolute after:inset-0 after:rounded-md after:ring-2 after:ring-blue-500 after:animate-pulse after:pointer-events-none'
+                                                                                        : isApproved 
+                                                                                            ? (shift.status === 'work' ? 'bg-green-50 text-green-600 ring-green-600/10' : 'bg-gray-50 text-gray-700 ring-gray-700/10')
+                                                                                            : isTentative
+                                                                                                // 出勤・休みを問わず、仮確定はすべて黄色で統一します
+                                                                                                ? 'bg-yellow-50 text-yellow-700 ring-yellow-600/30'
+                                                                                                : 'bg-red-50 text-red-600 ring-red-600/10'
                                                                                 }`}
                                                                             >
-                                                                                {/* ④ 未確定の場合は「未確定」というバッジを目立たせて表示 */}
                                                                                 {isPending && <span className="text-[9px] mb-0.5 font-bold text-red-600">未確定</span>}
+                                                                                {isTentative && <span className="text-[9px] mb-0.5 font-bold text-yellow-600">仮確定</span>}
 
                                                                                 {shift.status === 'work' ? (
                                                                                     <>
@@ -390,7 +414,7 @@ export default function AdminDashboard({ auth }) {
 
             {/* モーダル */}
             <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
-                <form onSubmit={handleApprove} className="p-6">
+                <form className="p-6">
                     <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
                         {isBulkEdit ? 'シフト一括確定' : 'シフト確認と確定'}
                     </h2>
@@ -441,8 +465,21 @@ export default function AdminDashboard({ auth }) {
                     </div>
 
                     <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsEditModalOpen(false)}>キャンセル</SecondaryButton>
-                        <PrimaryButton>{isBulkEdit ? 'まとめて確定する' : '確定する'}</PrimaryButton>
+                        <SecondaryButton type="button" onClick={() => setIsEditModalOpen(false)}>キャンセル</SecondaryButton>
+
+                        {/* 👇 未確定に戻すボタン：一括編集時、または個別編集で現在が未確定以外の場合に表示 */}
+                        {(isBulkEdit || (editingShift && editingShift.admin_status !== 'pending')) && (
+                            <button type="button" onClick={(e) => handleStatusUpdate(e, 'pending')} className="px-4 py-2 bg-gray-500 text-white rounded-md text-sm font-semibold hover:bg-gray-600">
+                                未確定に戻す
+                            </button>
+                        )}
+
+                        {/* 👇 仮確定にするボタン：一括編集時、または個別編集で現在が仮確定以外の場合に表示 */}
+                        {(isBulkEdit || (editingShift && editingShift.admin_status !== 'tentative')) && (
+                            <button type="button" onClick={(e) => handleStatusUpdate(e, 'tentative')} className="px-4 py-2 bg-yellow-500 text-white rounded-md text-sm font-semibold hover:bg-yellow-600">
+                                仮確定にする
+                            </button>
+                        )}
                     </div>
                 </form>
             </Modal>
