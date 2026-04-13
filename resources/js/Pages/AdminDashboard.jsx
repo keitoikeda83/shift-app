@@ -450,14 +450,16 @@ export default function AdminDashboard({ auth }) {
                     )}
                     </div>
 
-                    <div className="mt-6 flex justify-between items-center">
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => setIsEditModalOpen(false)}>
+                            キャンセル
+                        </SecondaryButton>
                         <DangerButton type="button" onClick={() => setIsRejectConfirmModalOpen(true)}>
-                            {isBulkEdit ? 'まとめて却下する' : '却下する'}
+                            {isBulkEdit ? 'まとめて却下' : '却下する'}
                         </DangerButton>
-                        <div className="flex gap-3">
-                            <SecondaryButton type="button" onClick={() => setIsEditModalOpen(false)}>キャンセル</SecondaryButton>
-                            <PrimaryButton type="submit">{isBulkEdit ? 'まとめて確定する' : '確定する'}</PrimaryButton>
-                        </div>
+                        <PrimaryButton type="submit">
+                            {isBulkEdit ? 'まとめて確定' : '確定する'}
+                        </PrimaryButton>
                     </div>
                 </form>
             </Modal>
