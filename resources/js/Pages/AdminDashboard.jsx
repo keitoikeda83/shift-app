@@ -185,6 +185,8 @@ export default function AdminDashboard({ auth }) {
         document.body.removeChild(link);
     };
 
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト管理</h2>}>
             <Head title="シフト管理" />
@@ -276,10 +278,17 @@ export default function AdminDashboard({ auth }) {
                                                     if (weekDayIndex === 0) textColor = "text-red-600"; // 日曜は赤
                                                     if (weekDayIndex === 6) textColor = "text-blue-600"; // 土曜は青
                                                 
+                                                    // 👇 ここから追加：今日の日付かどうかを判定
+                                                    const dateStrForHeader = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                                    const isToday = dateStrForHeader === todayStr;
+
                                                     return (
-                                                        <th key={day} scope="col" className={`px-3 py-2 text-center border-b border-r min-w-[90px] ${textColor}`}>
+                                                        // isToday が true なら薄いオレンジの背景色をつける
+                                                        <th key={day} scope="col" className={`px-3 py-2 text-center border-b border-r min-w-[90px] ${textColor} ${isToday ? 'bg-indigo-50' : ''}`}>
                                                             <div className="text-sm font-semibold">{day}</div>
                                                             <div className="text-xs font-normal">({weekDays[weekDayIndex]})</div>
+                                                            {/* 今日の場合は「本日」バッジを表示 */}
+                                                            {/* {isToday && <div className="text-[10px] text-indigo-700 font-bold mt-0.5">本日</div>} */}
                                                         </th>
                                                     );
                                                 })}
@@ -295,10 +304,12 @@ export default function AdminDashboard({ auth }) {
                                                     {/* 各日のシフト内容 */}
                                                     {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
                                                         const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                                        const shift = employee.shifts?.find(s => s.date === dateStr);
+                                                        const shift = employee.shifts?.find(s => s.date === dateStr);                                                        
+                                                        // 今日の日付かどうかを判定
+                                                        const isToday = dateStr === todayStr;
 
                                                         return (
-                                                            <td key={day} className="whitespace-nowrap px-1 py-2 text-sm text-center border-r">
+                                                            <td key={day} className={`whitespace-nowrap px-1 py-2 text-sm text-center border-r ${isToday ? 'bg-indigo-50/40' : ''}`}>
                                                                 {(() => {
                                                                     // ① フィルター設定に合わないものは非表示（null）にする
                                                                     if (shiftFilter !== 'all' && shift?.admin_status !== shiftFilter) {
