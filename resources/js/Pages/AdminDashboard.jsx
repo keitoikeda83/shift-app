@@ -5,8 +5,8 @@ import axios from 'axios';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-// 日付操作用ライブラリ（date-fns）の機能を追加
 import { format, getDaysInMonth, addMonths, subMonths } from 'date-fns';
+import DangerButton from '@/Components/DangerButton';
 
 export default function AdminDashboard({ auth }) {
     const [activeTab, setActiveTab] = useState('matrix'); // 'matrix' or 'pending'
@@ -22,6 +22,7 @@ export default function AdminDashboard({ auth }) {
     const [isBulkMode, setIsBulkMode] = useState(false); // 一括確定モード
     const [selectedShiftIds, setSelectedShiftIds] = useState([]); // 選択されたシフトのID
     const [isBulkEdit, setIsBulkEdit] = useState(false);
+    const [isRejectConfirmModalOpen, setIsRejectConfirmModalOpen] = useState(false);
 
     // セルをクリックした時の処理
     const handleShiftClick = (shift) => {
@@ -40,20 +41,6 @@ export default function AdminDashboard({ auth }) {
             );
         }
     };
-
-    // // 一括確定を実行する処理
-    // const handleBulkApprove = async () => {
-    //     try {
-    //         await axios.put('/admin/shifts/bulk-approve', { ids: selectedShiftIds });
-    //         setSelectedShiftIds([]);
-    //         setIsBulkMode(false);
-    //         fetchAdminData();
-    //         setFlashMessage(`${selectedShiftIds.length}件のシフトを確定しました`);
-    //         setTimeout(() => setFlashMessage(''), 3000);
-    //     } catch (error) {
-    //         console.error("一括確定エラー", error);
-    //     }
-    // };
 
     // データの取得
     const fetchAdminData = async () => {
@@ -116,6 +103,29 @@ export default function AdminDashboard({ auth }) {
             setTimeout(() => setFlashMessage(''), 3000);
         } catch (error) {
             console.error("承認エラー", error);
+        }
+    };
+
+    // 確認モーダルで「却下する」を押した時に実際に削除処理を行う関数
+    const executeReject = async () => {
+        try {
+            // isBulkMode（一括選択モードかどうか）
+            if (isBulkMode) {  
+                await axios.delete('/admin/shifts/bulk-reject', { data: { ids: selectedShiftIds } });
+                setSelectedShiftIds([]);
+                setIsBulkMode(false);
+            } else {
+                await axios.delete(`/admin/shifts/${editingShift.id}/reject`);
+            }
+
+            setIsRejectConfirmModalOpen(false); 
+            setIsEditModalOpen(false); 
+            
+            fetchAdminData();
+            setFlashMessage(isBulkMode ? '選択した申請を却下しました' : '申請を却下しました'); 
+            setTimeout(() => setFlashMessage(''), 3000);
+        } catch (error) {
+            console.error("却下エラー", error);
         }
     };
 
@@ -374,7 +384,7 @@ export default function AdminDashboard({ auth }) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <button onClick={() => openEditModal(shift)} className="text-blue-600 hover:text-blue-900">
-                                                        確認・確定
+                                                        詳細
                                                     </button>
                                                 </td>
                                             </tr>
@@ -392,7 +402,7 @@ export default function AdminDashboard({ auth }) {
             <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
                 <form onSubmit={handleApprove} className="p-6">
                     <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
-                        {isBulkEdit ? 'シフト一括確定' : 'シフト確認と確定'}
+                        {isBulkEdit ? 'シフト一括確定' : 'シフト申請'}
                     </h2>
                     
                     <div className="mt-4 space-y-4">
@@ -440,18 +450,47 @@ export default function AdminDashboard({ auth }) {
                     )}
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsEditModalOpen(false)}>キャンセル</SecondaryButton>
-                        <PrimaryButton>{isBulkEdit ? 'まとめて確定する' : '確定する'}</PrimaryButton>
+                    <div className="mt-6 flex justify-between items-center">
+                        <DangerButton type="button" onClick={() => setIsRejectConfirmModalOpen(true)}>
+                            {isBulkEdit ? 'まとめて却下する' : '却下する'}
+                        </DangerButton>
+                        <div className="flex gap-3">
+                            <SecondaryButton type="button" onClick={() => setIsEditModalOpen(false)}>キャンセル</SecondaryButton>
+                            <PrimaryButton type="submit">{isBulkEdit ? 'まとめて確定する' : '確定する'}</PrimaryButton>
+                        </div>
                     </div>
                 </form>
             </Modal>
             {isBulkMode && selectedShiftIds.length > 0 && (
                 <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-6 py-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-blue-200 z-[90] flex items-center space-x-4 w-max">
                     <span className="font-bold text-gray-700 text-sm">{selectedShiftIds.length}件を選択中</span>
+                    <DangerButton onClick={() => setIsRejectConfirmModalOpen(true)}>まとめて却下</DangerButton>
                     <PrimaryButton onClick={handleBulkConfirmClick}>まとめて確定</PrimaryButton>
                 </div>
             )}
+            {/* 却下確認用モーダル */}
+            <Modal show={isRejectConfirmModalOpen} onClose={() => setIsRejectConfirmModalOpen(false)} maxWidth="sm">
+                <div className="p-6">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center">
+                        <svg className="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        申請の却下
+                    </h2>
+                    
+                    <div className="mt-4 text-sm text-gray-600">
+                        {isBulkEdit || isBulkMode ? (
+                            <p><strong>{selectedShiftIds.length}件</strong> の申請を却下し、データを削除します。<br />よろしいですか？</p>
+                        ) : (
+                            <p>この申請を却下し、データを削除します。<br />よろしいですか？</p>
+                        )}
+                        <p className="mt-2 text-xs text-red-500 font-bold">※この操作は取り消せません。</p>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsRejectConfirmModalOpen(false)}>キャンセル</SecondaryButton>
+                        <DangerButton onClick={executeReject}>却下（削除）する</DangerButton>
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

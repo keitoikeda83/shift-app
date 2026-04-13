@@ -23,6 +23,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/admin/shifts/pending', [ShiftController::class, 'pendingShifts'])->name('admin.shifts.pending');
     Route::put('/admin/shifts/{id}/approve', [ShiftController::class, 'approve'])->name('admin.shifts.approve');
     Route::put('/admin/shifts/bulk-approve', [ShiftController::class, 'bulkApprove'])->name('admin.shifts.bulkApprove');
+    Route::delete('/admin/shifts/{id}/reject', [ShiftController::class, 'reject'])->name('admin.shifts.reject');
+    Route::delete('/admin/shifts/bulk-reject', [ShiftController::class, 'bulkReject'])->name('admin.shifts.bulkReject');
 });
 
 require __DIR__.'/auth.php';

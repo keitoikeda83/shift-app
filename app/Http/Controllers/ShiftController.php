@@ -107,4 +107,30 @@ class ShiftController extends Controller
 
         return response()->json(['message' => count($validated['ids']) . '件のシフトを確定しました']);
     }
+
+    /**
+     * 【店長用】単一のシフト申請を却下（削除）する
+     */
+    public function reject($id)
+    {
+        $shift = \App\Models\Shift::findOrFail($id);
+        $shift->delete();
+        
+        return response()->json(['message' => '申請を却下しました']);
+    }
+
+    /**
+     * 【店長用】複数のシフト申請を一括で却下（削除）する
+     */
+    public function bulkReject(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:shifts,id',
+        ]);
+
+        \App\Models\Shift::whereIn('id', $validated['ids'])->delete();
+        
+        return response()->json(['message' => count($validated['ids']) . '件の申請を却下しました']);
+    }
 }
