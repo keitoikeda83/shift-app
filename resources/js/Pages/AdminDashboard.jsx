@@ -465,9 +465,13 @@ export default function AdminDashboard({ auth }) {
                         <SecondaryButton type="button" onClick={() => setIsEditModalOpen(false)}>
                             キャンセル
                         </SecondaryButton>
-                        <DangerButton type="button" onClick={() => setIsRejectConfirmModalOpen(true)}>
-                            {isBulkEdit ? 'まとめて却下' : '却下する'}
-                        </DangerButton>
+                        
+                        {!isBulkEdit && (
+                            <DangerButton type="button" onClick={() => setIsRejectConfirmModalOpen(true)}>
+                                却下する
+                            </DangerButton>
+                        )}
+                        
                         <PrimaryButton type="submit">
                             {isBulkEdit ? 'まとめて確定' : '確定する'}
                         </PrimaryButton>
