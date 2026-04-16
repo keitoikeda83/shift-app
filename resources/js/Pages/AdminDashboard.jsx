@@ -278,7 +278,7 @@ export default function AdminDashboard({ auth }) {
                                                     if (weekDayIndex === 0) textColor = "text-red-600"; // 日曜は赤
                                                     if (weekDayIndex === 6) textColor = "text-blue-600"; // 土曜は青
                                                 
-                                                    // 👇 ここから追加：今日の日付かどうかを判定
+                                                    // 今日の日付かどうかを判定
                                                     const dateStrForHeader = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                                                     const isToday = dateStrForHeader === todayStr;
 
