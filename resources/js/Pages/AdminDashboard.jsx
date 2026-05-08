@@ -504,10 +504,10 @@ export default function AdminDashboard({ auth }) {
                                 </div>
 
                                 {/* 凡例 */}
-                                <div className="flex flex-wrap gap-3 mb-3 text-xs">
-                                    <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded ${STATUS_META.pending.cellClass}`}></span> 未確定</span>
-                                    <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded ${STATUS_META.draft.cellClass}`}></span> 仮シフト</span>
-                                    <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded ${STATUS_META.approved.cellClass}`}></span> 確定</span>
+                                <div className="flex flex-wrap gap-4 mb-3 text-xs">
+                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-red-400 bg-red-200"></span> 未確定</span>
+                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-yellow-500 bg-yellow-200"></span> 仮シフト</span>
+                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-green-500 bg-green-200"></span> 確定</span>
                                 </div>
 
                                 {/* テーブル */}
