@@ -424,6 +424,12 @@ export default function AdminDashboard({ auth }) {
         [employees]
     );
 
+    // 月内 pending 件数（一括確定時にゴミ箱へ移動される対象）
+    const pendingCountInMonth = useMemo(
+        () => allShiftsInMonth().filter(s => s.admin_status === 'pending').length,
+        [employees]
+    );
+
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト管理</h2>}>
             <Head title="シフト管理" />
@@ -983,9 +989,14 @@ export default function AdminDashboard({ auth }) {
             <Modal show={isApproveAllDraftsConfirmOpen} onClose={() => setIsApproveAllDraftsConfirmOpen(false)} maxWidth="sm">
                 <div className="p-6">
                     <h2 className="text-lg font-bold text-gray-900">仮シフトを全て確定</h2>
-                    <div className="mt-4 text-sm text-gray-600">
+                    <div className="mt-4 text-sm text-gray-600 space-y-2">
                         <p>{format(currentMonth, 'yyyy年MM月')} の仮シフト <strong>{draftCount}件</strong> をすべて確定します。</p>
-                        <p className="mt-2 text-xs text-gray-500">確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。</p>
+                        {pendingCountInMonth > 0 && (
+                            <p className="text-red-600">
+                                未確定の申請 <strong>{pendingCountInMonth}件</strong> はゴミ箱へ移動します。
+                            </p>
+                        )}
+                        <p className="text-xs text-gray-500">確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。ゴミ箱へ移動した申請は、ゴミ箱タブから復元できます。</p>
                     </div>
                     <div className="mt-6 flex justify-end gap-3">
                         <SecondaryButton onClick={() => setIsApproveAllDraftsConfirmOpen(false)}>キャンセル</SecondaryButton>

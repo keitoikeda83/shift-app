@@ -260,7 +260,7 @@ class ShiftController extends Controller
     }
 
     /**
-     * 【店長用】月内のすべての draft を一括確定する
+     * 【店長用】月内のすべての draft を一括確定し、pending はゴミ箱へ移動する
      */
     public function approveAllDrafts(Request $request)
     {
@@ -268,11 +268,28 @@ class ShiftController extends Controller
             'month' => 'required|string', // 形式: yyyy-MM
         ]);
 
-        $count = Shift::where('admin_status', 'draft')
+        $approvedCount = Shift::where('admin_status', 'draft')
             ->where('date', 'like', $validated['month'] . '%')
             ->update(['admin_status' => 'approved']);
 
-        return response()->json(['message' => "{$count}件の仮シフトを確定しました"]);
+        $rejectedCount = Shift::where('admin_status', 'pending')
+            ->where('date', 'like', $validated['month'] . '%')
+            ->delete();
+
+        $messages = [];
+        if ($approvedCount > 0) {
+            $messages[] = "{$approvedCount}件の仮シフトを確定しました";
+        }
+        if ($rejectedCount > 0) {
+            $messages[] = "未確定の申請{$rejectedCount}件をゴミ箱へ移動しました";
+        }
+        $message = $messages ? implode(' / ', $messages) : '対象のシフトはありませんでした';
+
+        return response()->json([
+            'message' => $message,
+            'approved_count' => $approvedCount,
+            'rejected_count' => $rejectedCount,
+        ]);
     }
 
     /**
