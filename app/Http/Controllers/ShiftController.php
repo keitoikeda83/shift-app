@@ -280,9 +280,9 @@ class ShiftController extends Controller
         if ($approvedCount > 0) {
             $messages[] = "{$approvedCount}件の仮シフトを確定しました";
         }
-        if ($rejectedCount > 0) {
-            $messages[] = "未確定の申請{$rejectedCount}件をゴミ箱へ移動しました";
-        }
+        // if ($rejectedCount > 0) {
+        //     $messages[] = "未確定の申請{$rejectedCount}件をゴミ箱へ移動しました";
+        // }
         $message = $messages ? implode(' / ', $messages) : '対象のシフトはありませんでした';
 
         return response()->json([
