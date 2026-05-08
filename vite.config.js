@@ -11,10 +11,10 @@ export default defineConfig({
         react(),
     ],
 
-    server: {
-        host: '0.0.0.0',
-        hmr: {
-            host: '192.168.0.4', // ここにMacのIPアドレスを指定します
-        },
-    },
+    // server: {
+    //     host: '0.0.0.0',
+    //     hmr: {
+    //         host: '192.168.0.4', // ここにMacのIPアドレスを指定します
+    //     },
+    // },
 });
