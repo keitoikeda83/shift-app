@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class ShiftController extends Controller
 {
     /**
-     * シフト・休み希望を保存する
+     * シフト・休み希望を保存する（従業員）
      */
     public function store(Request $request)
     {
@@ -36,26 +36,23 @@ class ShiftController extends Controller
     }
 
     /**
-     * 自分のシフト一覧を取得する（後でカレンダー表示に使用）
+     * 自分のシフト一覧を取得する（従業員カレンダー表示用）
      */
     public function index()
     {
-        // 確実にJSON形式で返す
         return response()->json(Shift::where('user_id', auth()->id())->get());
     }
 
     /**
-     * 【店長用】確定済みシフト（カレンダー表示用）
+     * 【店長用】月別シフト一覧（マトリックス表示用）
      */
     public function adminIndex(Request $request)
     {
-        // 画面から月（例: 2026-04）が送られてこなければ今月にする
         $month = $request->query('month', date('Y-m'));
 
-        // roleが'user'（一般従業員）の人を全員取得し、対象月のシフト（未確定・確定すべて）を結合する
+        // role='user'の従業員と、対象月のシフト（pending/draft/approved すべて）を取得
         $users = User::where('role', 'user')
             ->with(['shifts' => function ($query) use ($month) {
-                // admin_status の絞り込みを外し、その月の全シフトを取得するように変更
                 $query->where('date', 'like', $month . '%');
             }])
             ->get();
@@ -64,15 +61,119 @@ class ShiftController extends Controller
     }
 
     /**
-     * 【店長用】未承認シフト（申請一覧用）
+     * 【店長用】未承認（pending）シフト一覧
      */
     public function pendingShifts()
     {
-        return response()->json(Shift::with('user')->where('admin_status', 'pending')->orderBy('date')->get());
+        return response()->json(
+            Shift::with('user')
+                ->where('admin_status', 'pending')
+                ->orderBy('date')
+                ->get()
+        );
     }
-    
+
     /**
-     * 【店長用】シフトを確定（時間を上書き保存）する
+     * 【店長用】仮シフト（draft）を新規作成する
+     * 申請がない日付に店長判断で直接シフトを組むためのエンドポイント
+     */
+    public function storeDraft(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'date' => 'required|date',
+            'status' => 'required|in:work,off',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+        ]);
+
+        // 既に同日同ユーザーのシフトがある場合は上書きで draft 化
+        $shift = Shift::updateOrCreate(
+            [
+                'user_id' => $validated['user_id'],
+                'date' => $validated['date'],
+            ],
+            [
+                'status' => $validated['status'],
+                'start_time' => $validated['status'] === 'work' ? ($validated['start_time'] ?? null) : null,
+                'end_time' => $validated['status'] === 'work' ? ($validated['end_time'] ?? null) : null,
+                'admin_status' => 'draft',
+            ]
+        );
+
+        return response()->json(['message' => '仮シフトを作成しました', 'shift' => $shift]);
+    }
+
+    /**
+     * 【店長用】既存シフトの内容を更新する（仮シフトの編集）
+     */
+    public function updateShift(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'sometimes|in:work,off',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+            'admin_status' => 'sometimes|in:pending,draft,approved',
+        ]);
+
+        $shift = Shift::findOrFail($id);
+        $shift->update($validated);
+
+        return response()->json(['message' => 'シフトを更新しました', 'shift' => $shift]);
+    }
+
+    /**
+     * 【店長用】シフトを「仮シフト（draft）」に変更する
+     * pending → draft（仮確定）または approved → draft（差し戻し）に使用
+     */
+    public function moveToDraft(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'nullable|in:work,off',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+        ]);
+
+        $shift = Shift::findOrFail($id);
+        $shift->update([
+            'status' => $validated['status'] ?? $shift->status,
+            'start_time' => $validated['start_time'] ?? $shift->start_time,
+            'end_time' => $validated['end_time'] ?? $shift->end_time,
+            'admin_status' => 'draft',
+        ]);
+
+        return response()->json(['message' => '仮シフトに変更しました', 'shift' => $shift]);
+    }
+
+    /**
+     * 【店長用】複数シフトを一括で draft 化する
+     */
+    public function bulkMoveToDraft(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:shifts,id',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+        ]);
+
+        $update = ['admin_status' => 'draft'];
+        if (array_key_exists('start_time', $validated)) {
+            $update['start_time'] = $validated['start_time'];
+        }
+        if (array_key_exists('end_time', $validated)) {
+            $update['end_time'] = $validated['end_time'];
+        }
+
+        Shift::whereIn('id', $validated['ids'])->update($update);
+
+        return response()->json([
+            'message' => count($validated['ids']) . '件を仮シフトに変更しました'
+        ]);
+    }
+
+    /**
+     * 【店長用】シフトを確定する（pending/draft → approved）
      */
     public function approve(Request $request, $id)
     {
@@ -83,44 +184,72 @@ class ShiftController extends Controller
 
         $shift = Shift::findOrFail($id);
         $shift->update([
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
+            'start_time' => $validated['start_time'] ?? $shift->start_time,
+            'end_time' => $validated['end_time'] ?? $shift->end_time,
             'admin_status' => 'approved'
         ]);
-    
+
         return response()->json(['message' => 'シフトを確定しました']);
     }
 
     /**
      * 【店長用】複数のシフトを一括で確定する
+     * pending/draft どちらからでも approved に昇格させる
      */
     public function bulkApprove(Request $request)
     {
         $validated = $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'exists:shifts,id',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
         ]);
 
+        $update = ['admin_status' => 'approved'];
+        // 時間が指定されているときだけ上書きする（指定なしなら個々のシフトの時間を保持）
+        if (!empty($validated['start_time'])) {
+            $update['start_time'] = $validated['start_time'];
+        }
+        if (!empty($validated['end_time'])) {
+            $update['end_time'] = $validated['end_time'];
+        }
+
         Shift::whereIn('id', $validated['ids'])
-            ->where('admin_status', 'pending')
-            ->update(['admin_status' => 'approved']);
+            ->whereIn('admin_status', ['pending', 'draft'])
+            ->update($update);
 
         return response()->json(['message' => count($validated['ids']) . '件のシフトを確定しました']);
     }
 
     /**
-     * 【店長用】単一のシフト申請を却下（削除）する
+     * 【店長用】月内のすべての draft を一括確定する
+     */
+    public function approveAllDrafts(Request $request)
+    {
+        $validated = $request->validate([
+            'month' => 'required|string', // 形式: yyyy-MM
+        ]);
+
+        $count = Shift::where('admin_status', 'draft')
+            ->where('date', 'like', $validated['month'] . '%')
+            ->update(['admin_status' => 'approved']);
+
+        return response()->json(['message' => "{$count}件の仮シフトを確定しました"]);
+    }
+
+    /**
+     * 【店長用】単一シフトを却下する（論理削除）
      */
     public function reject($id)
     {
         $shift = Shift::findOrFail($id);
         $shift->delete();
-        
+
         return response()->json(['message' => '申請を却下しました']);
     }
 
     /**
-     * 【店長用】複数のシフト申請を一括で却下（削除）する
+     * 【店長用】複数シフトを一括で却下する（論理削除）
      */
     public function bulkReject(Request $request)
     {
@@ -130,7 +259,72 @@ class ShiftController extends Controller
         ]);
 
         Shift::whereIn('id', $validated['ids'])->delete();
-        
+
         return response()->json(['message' => count($validated['ids']) . '件の申請を却下しました']);
+    }
+
+    /**
+     * 【店長用】ゴミ箱（論理削除済みシフト）一覧
+     */
+    public function trashedShifts()
+    {
+        return response()->json(
+            Shift::onlyTrashed()
+                ->with('user')
+                ->orderBy('deleted_at', 'desc')
+                ->get()
+        );
+    }
+
+    /**
+     * 【店長用】ゴミ箱から復元する
+     */
+    public function restore($id)
+    {
+        $shift = Shift::onlyTrashed()->findOrFail($id);
+        $shift->restore();
+
+        return response()->json(['message' => 'シフトを復元しました', 'shift' => $shift]);
+    }
+
+    /**
+     * 【店長用】複数シフトを一括復元する
+     */
+    public function bulkRestore(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $count = Shift::onlyTrashed()->whereIn('id', $validated['ids'])->restore();
+
+        return response()->json(['message' => "{$count}件のシフトを復元しました"]);
+    }
+
+    /**
+     * 【店長用】完全削除（物理削除）
+     */
+    public function forceDelete($id)
+    {
+        $shift = Shift::onlyTrashed()->findOrFail($id);
+        $shift->forceDelete();
+
+        return response()->json(['message' => 'シフトを完全削除しました']);
+    }
+
+    /**
+     * 【店長用】複数シフトを一括完全削除
+     */
+    public function bulkForceDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $count = Shift::onlyTrashed()->whereIn('id', $validated['ids'])->forceDelete();
+
+        return response()->json(['message' => "{$count}件のシフトを完全削除しました"]);
     }
 }

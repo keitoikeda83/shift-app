@@ -106,7 +106,7 @@ export default function ShiftCalendar({ shifts = [], onDateClick, selectedDates 
             
             {/* 凡例 */}
             <div className="p-4 bg-gray-50 flex gap-4 text-xs">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></span> 申請中</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></span> 申請中（店長対応中）</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-50 border border-green-300 rounded"></span> 確定</span>
             </div>
         </div>
