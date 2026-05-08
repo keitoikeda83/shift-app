@@ -160,6 +160,29 @@ export default function AdminDashboard({ auth }) {
         }
     };
 
+    const submitMoveToPending = async () => {
+        try {
+            await axios.put(`/admin/shifts/${editingShift.id}/to-pending`);
+            closeEditModal();
+            fetchAdminData();
+            showFlash('未確定に戻しました');
+        } catch (error) {
+            console.error('未確定戻しエラー', error);
+        }
+    };
+
+    const submitBulkMoveToPending = async () => {
+        try {
+            await axios.put('/admin/shifts/bulk-to-pending', { ids: selectedShiftIds });
+            setSelectedShiftIds([]);
+            setIsBulkMode(false);
+            fetchAdminData();
+            showFlash('選択したシフトを未確定に戻しました');
+        } catch (error) {
+            console.error('一括未確定戻しエラー', error);
+        }
+    };
+
     const submitMoveToDraft = async () => {
         try {
             await axios.put(`/admin/shifts/${editingShift.id}/to-draft`, {
@@ -882,9 +905,10 @@ export default function AdminDashboard({ auth }) {
                                     {editingShift.admin_status === 'pending' && (
                                         <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする →</PrimaryButton>
                                     )}
-                                    {/* draft: 一旦保存（副次）+ 確定（主要） */}
+                                    {/* draft: 未確定に戻す（後退・副次）+ 一旦保存（副次）+ 確定（主要） */}
                                     {editingShift.admin_status === 'draft' && (
                                         <>
+                                            <SecondaryButton type="button" onClick={submitMoveToPending}>← 未確定に戻す</SecondaryButton>
                                             <SecondaryButton type="button" onClick={submitUpdateDraft}>一旦保存</SecondaryButton>
                                             <PrimaryButton type="button" onClick={submitApprove}>確定する →</PrimaryButton>
                                         </>
@@ -911,7 +935,7 @@ export default function AdminDashboard({ auth }) {
             </Modal>
 
             {/* 一括選択 フローティング: 「主要1 + 副次」に整理
-                 - 全て draft → 主要 = 確定
+                 - 全て draft → 主要 = 確定 / 副次 = 未確定に戻す
                  - pending を含む(or 混在) → 主要 = 仮シフト化（必ず draft を経由させる） */}
             {isBulkMode && selectedShiftIds.length > 0 && (() => {
                 const allDraft = selectedShifts.length > 0 && selectedShifts.every(s => s.admin_status === 'draft');
@@ -919,6 +943,9 @@ export default function AdminDashboard({ auth }) {
                     <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-6 py-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-blue-200 z-[90] flex items-center space-x-3 w-max">
                         <span className="font-bold text-gray-700 text-sm">{selectedShiftIds.length}件を選択中</span>
                         <DangerButton onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
+                        {allDraft && (
+                            <SecondaryButton onClick={submitBulkMoveToPending}>← 未確定に戻す</SecondaryButton>
+                        )}
                         {allDraft ? (
                             <PrimaryButton onClick={openBulkApproveModal}>確定</PrimaryButton>
                         ) : (

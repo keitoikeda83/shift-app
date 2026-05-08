@@ -173,6 +173,40 @@ class ShiftController extends Controller
     }
 
     /**
+     * 【店長用】仮シフト（draft）を未確定（pending）に戻す
+     */
+    public function moveToPending($id)
+    {
+        $shift = Shift::findOrFail($id);
+
+        if ($shift->admin_status !== 'draft') {
+            return response()->json(['message' => '仮シフト以外は未確定に戻せません'], 422);
+        }
+
+        $shift->update(['admin_status' => 'pending']);
+
+        return response()->json(['message' => '未確定に戻しました', 'shift' => $shift]);
+    }
+
+    /**
+     * 【店長用】複数の仮シフトを一括で未確定に戻す
+     * draft 以外は対象外（pending/approved は変更しない）
+     */
+    public function bulkMoveToPending(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:shifts,id',
+        ]);
+
+        $count = Shift::whereIn('id', $validated['ids'])
+            ->where('admin_status', 'draft')
+            ->update(['admin_status' => 'pending']);
+
+        return response()->json(['message' => "{$count}件を未確定に戻しました"]);
+    }
+
+    /**
      * 【店長用】シフトを確定する（pending/draft → approved）
      */
     public function approve(Request $request, $id)

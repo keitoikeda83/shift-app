@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 店長用 - 一括操作（{id} を含むルートより先に登録）
     Route::put('/admin/shifts/bulk-to-draft', [ShiftController::class, 'bulkMoveToDraft'])->name('admin.shifts.bulkToDraft');
+    Route::put('/admin/shifts/bulk-to-pending', [ShiftController::class, 'bulkMoveToPending'])->name('admin.shifts.bulkToPending');
     Route::put('/admin/shifts/bulk-approve', [ShiftController::class, 'bulkApprove'])->name('admin.shifts.bulkApprove');
     Route::put('/admin/shifts/approve-all-drafts', [ShiftController::class, 'approveAllDrafts'])->name('admin.shifts.approveAllDrafts');
     Route::put('/admin/shifts/bulk-restore', [ShiftController::class, 'bulkRestore'])->name('admin.shifts.bulkRestore');
@@ -39,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 店長用 - 単一シフト操作（id は数値のみ）
     Route::put('/admin/shifts/{id}/to-draft', [ShiftController::class, 'moveToDraft'])->whereNumber('id')->name('admin.shifts.toDraft');
+    Route::put('/admin/shifts/{id}/to-pending', [ShiftController::class, 'moveToPending'])->whereNumber('id')->name('admin.shifts.toPending');
     Route::put('/admin/shifts/{id}/approve', [ShiftController::class, 'approve'])->whereNumber('id')->name('admin.shifts.approve');
     Route::put('/admin/shifts/{id}/restore', [ShiftController::class, 'restore'])->whereNumber('id')->name('admin.shifts.restore');
     Route::put('/admin/shifts/{id}', [ShiftController::class, 'updateShift'])->whereNumber('id')->name('admin.shifts.update');
