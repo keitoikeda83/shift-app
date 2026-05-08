@@ -528,9 +528,9 @@ export default function AdminDashboard({ auth }) {
 
                                 {/* 凡例 */}
                                 <div className="flex flex-wrap gap-4 mb-3 text-xs">
-                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-red-400 bg-red-200"></span> 未確定</span>
-                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-yellow-500 bg-yellow-200"></span> 仮シフト</span>
-                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-green-500 bg-green-200"></span> 確定</span>
+                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-red-600/10 bg-red-50"></span> 未確定</span>
+                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-yellow-600/20 bg-yellow-50"></span> 仮シフト</span>
+                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-green-600/10 bg-green-50"></span> 確定</span>
                                 </div>
 
                                 {/* テーブル */}
@@ -903,19 +903,19 @@ export default function AdminDashboard({ auth }) {
                                 <>
                                     {/* pending: 「仮シフトにする」のみ主要（pending→approved 直行はさせない） */}
                                     {editingShift.admin_status === 'pending' && (
-                                        <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする →</PrimaryButton>
+                                        <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする</PrimaryButton>
                                     )}
                                     {/* draft: 未確定に戻す（後退・副次）+ 一旦保存（副次）+ 確定（主要） */}
                                     {editingShift.admin_status === 'draft' && (
                                         <>
-                                            <SecondaryButton type="button" onClick={submitMoveToPending}>← 未確定に戻す</SecondaryButton>
-                                            <SecondaryButton type="button" onClick={submitUpdateDraft}>一旦保存</SecondaryButton>
-                                            <PrimaryButton type="button" onClick={submitApprove}>確定する →</PrimaryButton>
+                                            <SecondaryButton type="button" onClick={submitMoveToPending}>未確定に戻す</SecondaryButton>
+                                            <SecondaryButton type="button" onClick={submitUpdateDraft}>更新</SecondaryButton>
+                                            <PrimaryButton type="button" onClick={submitApprove}>シフト確定</PrimaryButton>
                                         </>
                                     )}
                                     {/* approved: 仮シフトに戻す（修正用） */}
                                     {editingShift.admin_status === 'approved' && (
-                                        <PrimaryButton type="button" onClick={submitMoveToDraft}>← 仮シフトに戻す</PrimaryButton>
+                                        <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトに戻す</PrimaryButton>
                                     )}
                                 </>
                             )}
@@ -944,10 +944,10 @@ export default function AdminDashboard({ auth }) {
                         <span className="font-bold text-gray-700 text-sm">{selectedShiftIds.length}件を選択中</span>
                         <DangerButton onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
                         {allDraft && (
-                            <SecondaryButton onClick={submitBulkMoveToPending}>← 未確定に戻す</SecondaryButton>
+                            <SecondaryButton onClick={submitBulkMoveToPending}>未確定に戻す</SecondaryButton>
                         )}
                         {allDraft ? (
-                            <PrimaryButton onClick={openBulkApproveModal}>確定</PrimaryButton>
+                            <PrimaryButton onClick={openBulkApproveModal}>シフト確定</PrimaryButton>
                         ) : (
                             <PrimaryButton onClick={openBulkToDraftModal}>仮シフト化</PrimaryButton>
                         )}
