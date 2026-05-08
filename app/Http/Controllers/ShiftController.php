@@ -212,14 +212,18 @@ class ShiftController extends Controller
     public function approve(Request $request, $id)
     {
         $validated = $request->validate([
+            'status' => 'nullable|in:work,off',
             'start_time' => 'nullable|string',
             'end_time' => 'nullable|string',
         ]);
 
         $shift = Shift::findOrFail($id);
+        $newStatus = $validated['status'] ?? $shift->status;
+
         $shift->update([
-            'start_time' => $validated['start_time'] ?? $shift->start_time,
-            'end_time' => $validated['end_time'] ?? $shift->end_time,
+            'status' => $newStatus,
+            'start_time' => $newStatus === 'work' ? ($validated['start_time'] ?? $shift->start_time) : null,
+            'end_time' => $newStatus === 'work' ? ($validated['end_time'] ?? $shift->end_time) : null,
             'admin_status' => 'approved'
         ]);
 

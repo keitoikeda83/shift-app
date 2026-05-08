@@ -149,6 +149,7 @@ export default function AdminDashboard({ auth }) {
         e.preventDefault();
         try {
             await axios.put(`/admin/shifts/${editingShift.id}/approve`, {
+                status: editStatus,
                 start_time: editStatus === 'work' ? editStartTime : null,
                 end_time: editStatus === 'work' ? editEndTime : null,
             });
@@ -780,7 +781,7 @@ export default function AdminDashboard({ auth }) {
             <Modal show={isEditModalOpen} onClose={closeEditModal}>
                 <div className="p-6">
                     <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
-                        {modalMode === 'createDraft' && '仮シフトを作成'}
+                        {modalMode === 'createDraft' && '強制シフトを作成'}
                         {modalMode === 'bulkApprove' && 'まとめて確定'}
                         {modalMode === 'bulkToDraft' && 'まとめて仮シフトに変更'}
                         {modalMode === 'view' && editingShift && (
@@ -886,12 +887,17 @@ export default function AdminDashboard({ auth }) {
                         )}
                     </div>
 
-                    {/* アクションボタン: 「左=破壊的 / 右=取消+副次+主要」の2区画 */}
+                    {/* アクションボタン: 「左=後退/破壊 / 右=取消+副次+主要」の2区画
+                         draft編集時は「シフト確定」が編集内容も保存して確定するため、
+                         「仮のまま保存」だけしたい場合に「仮保存」（旧:更新）を残してある */}
                     <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        {/* 左: 削除（破壊的アクション）*/}
-                        <div>
+                        {/* 左: 削除・後退アクション */}
+                        <div className="flex flex-wrap items-center gap-3">
                             {modalMode === 'view' && editingShift && (
                                 <DangerButton type="button" onClick={requestDelete}>削除</DangerButton>
+                            )}
+                            {modalMode === 'view' && editingShift?.admin_status === 'draft' && (
+                                <SecondaryButton type="button" onClick={submitMoveToPending}>未確定に戻す</SecondaryButton>
                             )}
                         </div>
 
@@ -905,11 +911,10 @@ export default function AdminDashboard({ auth }) {
                                     {editingShift.admin_status === 'pending' && (
                                         <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする</PrimaryButton>
                                     )}
-                                    {/* draft: 未確定に戻す（後退・副次）+ 一旦保存（副次）+ 確定（主要） */}
+                                    {/* draft: 仮保存（編集だけ保存）+ シフト確定（保存して確定） */}
                                     {editingShift.admin_status === 'draft' && (
                                         <>
-                                            <SecondaryButton type="button" onClick={submitMoveToPending}>未確定に戻す</SecondaryButton>
-                                            <SecondaryButton type="button" onClick={submitUpdateDraft}>更新</SecondaryButton>
+                                            <SecondaryButton type="button" onClick={submitUpdateDraft}>仮シフト更新</SecondaryButton>
                                             <PrimaryButton type="button" onClick={submitApprove}>シフト確定</PrimaryButton>
                                         </>
                                     )}
@@ -921,7 +926,7 @@ export default function AdminDashboard({ auth }) {
                             )}
 
                             {modalMode === 'createDraft' && (
-                                <PrimaryButton type="button" onClick={submitCreateDraft}>仮シフトを作成</PrimaryButton>
+                                <PrimaryButton type="button" onClick={submitCreateDraft}>強制シフトを作成</PrimaryButton>
                             )}
                             {modalMode === 'bulkApprove' && (
                                 <PrimaryButton type="button" onClick={submitBulkApprove}>まとめて確定</PrimaryButton>
