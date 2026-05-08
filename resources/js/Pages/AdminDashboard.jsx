@@ -257,6 +257,19 @@ export default function AdminDashboard({ auth }) {
         }
     };
 
+    // 削除リクエスト: 編集モーダルが開いている場合は閉じてから確認モーダルを表示
+    // （Modal同士の重なりで onClick が通らなくなる事象を回避）
+    const requestDelete = () => {
+        setIsEditModalOpen(false);
+        setIsRejectConfirmOpen(true);
+    };
+
+    const cancelReject = () => {
+        setIsRejectConfirmOpen(false);
+        // 単一削除の確認をキャンセルした時は編集モーダルへ戻す
+        if (editingShift) setIsEditModalOpen(true);
+    };
+
     const executeReject = async () => {
         try {
             // editingShift がセットされていれば単一削除、無ければ選択中の一括削除
@@ -850,47 +863,49 @@ export default function AdminDashboard({ auth }) {
                         )}
                     </div>
 
-                    {/* アクションボタン */}
-                    <div className="mt-6 flex flex-wrap justify-end gap-3">
-                        <SecondaryButton type="button" onClick={closeEditModal}>キャンセル</SecondaryButton>
+                    {/* アクションボタン: 「左=破壊的 / 右=取消+副次+主要」の2区画 */}
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                        {/* 左: 削除（破壊的アクション）*/}
+                        <div>
+                            {modalMode === 'view' && editingShift && (
+                                <DangerButton type="button" onClick={requestDelete}>削除</DangerButton>
+                            )}
+                        </div>
 
-                        {modalMode === 'view' && editingShift && (
-                            <>
-                                {/* pending: 却下 / 仮確定 / 確定 */}
-                                {editingShift.admin_status === 'pending' && (
-                                    <>
-                                        <DangerButton type="button" onClick={() => setIsRejectConfirmOpen(true)}>却下</DangerButton>
-                                        <SecondaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする</SecondaryButton>
-                                        <PrimaryButton type="button" onClick={submitApprove}>確定する</PrimaryButton>
-                                    </>
-                                )}
-                                {/* draft: 削除 / 編集保存 / 確定 */}
-                                {editingShift.admin_status === 'draft' && (
-                                    <>
-                                        <DangerButton type="button" onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
-                                        <SecondaryButton type="button" onClick={submitUpdateDraft}>変更を保存</SecondaryButton>
-                                        <PrimaryButton type="button" onClick={submitApprove}>確定する</PrimaryButton>
-                                    </>
-                                )}
-                                {/* approved: 削除 / draft へ差し戻し */}
-                                {editingShift.admin_status === 'approved' && (
-                                    <>
-                                        <DangerButton type="button" onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
-                                        <SecondaryButton type="button" onClick={submitMoveToDraft}>仮シフトに差し戻す</SecondaryButton>
-                                    </>
-                                )}
-                            </>
-                        )}
+                        {/* 右: 取消 → 副次 → 主要 の順 */}
+                        <div className="flex flex-wrap items-center gap-3 ml-auto">
+                            <SecondaryButton type="button" onClick={closeEditModal}>キャンセル</SecondaryButton>
 
-                        {modalMode === 'createDraft' && (
-                            <PrimaryButton type="button" onClick={submitCreateDraft}>仮シフトを作成</PrimaryButton>
-                        )}
-                        {modalMode === 'bulkApprove' && (
-                            <PrimaryButton type="button" onClick={submitBulkApprove}>まとめて確定</PrimaryButton>
-                        )}
-                        {modalMode === 'bulkToDraft' && (
-                            <PrimaryButton type="button" onClick={submitBulkToDraft}>まとめて仮シフトに変更</PrimaryButton>
-                        )}
+                            {modalMode === 'view' && editingShift && (
+                                <>
+                                    {/* pending: 「仮シフトにする」のみ主要（pending→approved 直行はさせない） */}
+                                    {editingShift.admin_status === 'pending' && (
+                                        <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする →</PrimaryButton>
+                                    )}
+                                    {/* draft: 一旦保存（副次）+ 確定（主要） */}
+                                    {editingShift.admin_status === 'draft' && (
+                                        <>
+                                            <SecondaryButton type="button" onClick={submitUpdateDraft}>一旦保存</SecondaryButton>
+                                            <PrimaryButton type="button" onClick={submitApprove}>確定する →</PrimaryButton>
+                                        </>
+                                    )}
+                                    {/* approved: 仮シフトに戻す（修正用） */}
+                                    {editingShift.admin_status === 'approved' && (
+                                        <PrimaryButton type="button" onClick={submitMoveToDraft}>← 仮シフトに戻す</PrimaryButton>
+                                    )}
+                                </>
+                            )}
+
+                            {modalMode === 'createDraft' && (
+                                <PrimaryButton type="button" onClick={submitCreateDraft}>仮シフトを作成</PrimaryButton>
+                            )}
+                            {modalMode === 'bulkApprove' && (
+                                <PrimaryButton type="button" onClick={submitBulkApprove}>まとめて確定</PrimaryButton>
+                            )}
+                            {modalMode === 'bulkToDraft' && (
+                                <PrimaryButton type="button" onClick={submitBulkToDraft}>まとめて仮シフトに変更</PrimaryButton>
+                            )}
+                        </div>
                     </div>
                 </div>
             </Modal>
@@ -914,7 +929,7 @@ export default function AdminDashboard({ auth }) {
             })()}
 
             {/* 削除確認モーダル */}
-            <Modal show={isRejectConfirmOpen} onClose={() => setIsRejectConfirmOpen(false)} maxWidth="sm">
+            <Modal show={isRejectConfirmOpen} onClose={cancelReject} maxWidth="sm">
                 <div className="p-6">
                     <h2 className="text-lg font-bold text-gray-900">シフトの削除</h2>
                     <div className="mt-4 text-sm text-gray-600">
@@ -926,7 +941,7 @@ export default function AdminDashboard({ auth }) {
                         <p className="mt-2 text-xs text-blue-600 font-bold">※ゴミ箱から復元できます。</p>
                     </div>
                     <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsRejectConfirmOpen(false)}>キャンセル</SecondaryButton>
+                        <SecondaryButton onClick={cancelReject}>キャンセル</SecondaryButton>
                         <DangerButton onClick={executeReject}>ゴミ箱へ移動</DangerButton>
                     </div>
                 </div>
