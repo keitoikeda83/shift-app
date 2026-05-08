@@ -259,12 +259,16 @@ export default function AdminDashboard({ auth }) {
 
     const executeReject = async () => {
         try {
-            if (isBulkMode) {
+            // editingShift がセットされていれば単一削除、無ければ選択中の一括削除
+            if (editingShift) {
+                await axios.delete(`/admin/shifts/${editingShift.id}/reject`);
+            } else if (selectedShiftIds.length > 0) {
                 await axios.delete('/admin/shifts/bulk-reject', { data: { ids: selectedShiftIds } });
                 setSelectedShiftIds([]);
                 setIsBulkMode(false);
             } else {
-                await axios.delete(`/admin/shifts/${editingShift.id}/reject`);
+                setIsRejectConfirmOpen(false);
+                return;
             }
             setIsRejectConfirmOpen(false);
             closeEditModal();
@@ -906,10 +910,10 @@ export default function AdminDashboard({ auth }) {
                 <div className="p-6">
                     <h2 className="text-lg font-bold text-gray-900">シフトの削除</h2>
                     <div className="mt-4 text-sm text-gray-600">
-                        {isBulkMode ? (
-                            <p><strong>{selectedShiftIds.length}件</strong> のシフトをゴミ箱へ移動します。</p>
-                        ) : (
+                        {editingShift ? (
                             <p>このシフトをゴミ箱へ移動します。</p>
+                        ) : (
+                            <p><strong>{selectedShiftIds.length}件</strong> のシフトをゴミ箱へ移動します。</p>
                         )}
                         <p className="mt-2 text-xs text-blue-600 font-bold">※ゴミ箱から復元できます。</p>
                     </div>
