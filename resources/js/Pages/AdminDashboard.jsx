@@ -42,6 +42,11 @@ export default function AdminDashboard({ auth }) {
     const [selectedTrashedIds, setSelectedTrashedIds] = useState([]);
     const [isForceDeleteConfirmOpen, setIsForceDeleteConfirmOpen] = useState(false);
 
+    // ゴミ箱フィルタ ('all' または 値)
+    const [trashFilterMonth, setTrashFilterMonth] = useState('all');         // 'yyyy-MM'
+    const [trashFilterUserId, setTrashFilterUserId] = useState('all');       // user.id (number)
+    const [trashFilterDeletedDate, setTrashFilterDeletedDate] = useState('all'); // 'yyyy-MM-dd'
+
     const showFlash = (msg) => {
         setFlashMessage(msg);
         setTimeout(() => setFlashMessage(''), 3000);
@@ -424,6 +429,79 @@ export default function AdminDashboard({ auth }) {
         [employees]
     );
 
+    // ── ゴミ箱フィルタ ────────────────────────────────────
+    // 候補: 月（シフトの date 月）
+    const trashMonthOptions = useMemo(() => {
+        const set = new Set(
+            trashedShifts
+                .map(s => (typeof s.date === 'string' ? s.date.substring(0, 7) : null))
+                .filter(Boolean)
+        );
+        return Array.from(set).sort((a, b) => b.localeCompare(a)); // 新しい順
+    }, [trashedShifts]);
+
+    // 候補: 従業員
+    const trashUserOptions = useMemo(() => {
+        const map = new Map();
+        trashedShifts.forEach(s => {
+            if (s.user?.id != null && !map.has(s.user.id)) {
+                map.set(s.user.id, s.user.name ?? `ID:${s.user.id}`);
+            }
+        });
+        return Array.from(map.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    }, [trashedShifts]);
+
+    // 候補: 削除日（deleted_at の yyyy-MM-dd）
+    const trashDeletedDateOptions = useMemo(() => {
+        const set = new Set();
+        trashedShifts.forEach(s => {
+            if (!s.deleted_at) return;
+            try {
+                set.add(format(new Date(s.deleted_at), 'yyyy-MM-dd'));
+            } catch (_) { /* skip */ }
+        });
+        return Array.from(set).sort((a, b) => b.localeCompare(a)); // 新しい順
+    }, [trashedShifts]);
+
+    // フィルタ済みリスト
+    const filteredTrashedShifts = useMemo(() => {
+        return trashedShifts.filter(s => {
+            if (trashFilterMonth !== 'all') {
+                if (typeof s.date !== 'string' || s.date.substring(0, 7) !== trashFilterMonth) return false;
+            }
+            if (trashFilterUserId !== 'all') {
+                if (String(s.user?.id) !== String(trashFilterUserId)) return false;
+            }
+            if (trashFilterDeletedDate !== 'all') {
+                if (!s.deleted_at) return false;
+                let key;
+                try {
+                    key = format(new Date(s.deleted_at), 'yyyy-MM-dd');
+                } catch (_) { return false; }
+                if (key !== trashFilterDeletedDate) return false;
+            }
+            return true;
+        });
+    }, [trashedShifts, trashFilterMonth, trashFilterUserId, trashFilterDeletedDate]);
+
+    const resetTrashFilters = () => {
+        setTrashFilterMonth('all');
+        setTrashFilterUserId('all');
+        setTrashFilterDeletedDate('all');
+        setSelectedTrashedIds([]);
+    };
+
+    // フィルタ変更時、表示外の選択IDを掃除する
+    useEffect(() => {
+        const visibleIds = new Set(filteredTrashedShifts.map(s => s.id));
+        setSelectedTrashedIds(prev => prev.filter(id => visibleIds.has(id)));
+    }, [filteredTrashedShifts]);
+
+    const isTrashFilterActive =
+        trashFilterMonth !== 'all' || trashFilterUserId !== 'all' || trashFilterDeletedDate !== 'all';
+
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト管理</h2>}>
             <Head title="シフト管理" />
@@ -711,8 +789,66 @@ export default function AdminDashboard({ auth }) {
                                 )}
                             </div>
 
+                            {/* フィルター */}
+                            {trashedShifts.length > 0 && (
+                                <div className="mb-4 p-3 bg-gray-50 border rounded-lg flex flex-wrap items-end gap-3">
+                                    <div className="flex flex-col">
+                                        <label className="text-xs font-bold text-gray-600 mb-1">月</label>
+                                        <select
+                                            value={trashFilterMonth}
+                                            onChange={e => setTrashFilterMonth(e.target.value)}
+                                            className="border-gray-300 rounded text-sm"
+                                        >
+                                            <option value="all">すべて</option>
+                                            {trashMonthOptions.map(m => (
+                                                <option key={m} value={m}>{m.replace('-', '年')}月</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <label className="text-xs font-bold text-gray-600 mb-1">従業員</label>
+                                        <select
+                                            value={trashFilterUserId}
+                                            onChange={e => setTrashFilterUserId(e.target.value)}
+                                            className="border-gray-300 rounded text-sm"
+                                        >
+                                            <option value="all">すべて</option>
+                                            {trashUserOptions.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <label className="text-xs font-bold text-gray-600 mb-1">削除日</label>
+                                        <select
+                                            value={trashFilterDeletedDate}
+                                            onChange={e => setTrashFilterDeletedDate(e.target.value)}
+                                            className="border-gray-300 rounded text-sm"
+                                        >
+                                            <option value="all">すべて</option>
+                                            {trashDeletedDateOptions.map(d => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {isTrashFilterActive && (
+                                        <button
+                                            onClick={resetTrashFilters}
+                                            className="text-xs text-gray-600 hover:text-gray-900 underline ml-auto"
+                                        >
+                                            フィルターをクリア
+                                        </button>
+                                    )}
+                                    <div className="text-xs text-gray-500 ml-auto">
+                                        表示中: <strong>{filteredTrashedShifts.length}</strong> / {trashedShifts.length} 件
+                                    </div>
+                                </div>
+                            )}
+
                             {trashedShifts.length === 0 ? (
                                 <p className="text-gray-500">ゴミ箱は空です。</p>
+                            ) : filteredTrashedShifts.length === 0 ? (
+                                <p className="text-gray-500">条件に一致するシフトはありません。</p>
                             ) : (
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
@@ -720,9 +856,9 @@ export default function AdminDashboard({ auth }) {
                                             <th className="px-3 py-3 w-10">
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedTrashedIds.length === trashedShifts.length}
+                                                    checked={filteredTrashedShifts.length > 0 && selectedTrashedIds.length === filteredTrashedShifts.length}
                                                     onChange={(e) => {
-                                                        setSelectedTrashedIds(e.target.checked ? trashedShifts.map(s => s.id) : []);
+                                                        setSelectedTrashedIds(e.target.checked ? filteredTrashedShifts.map(s => s.id) : []);
                                                     }}
                                                 />
                                             </th>
@@ -735,7 +871,7 @@ export default function AdminDashboard({ auth }) {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {trashedShifts.map(shift => {
+                                        {filteredTrashedShifts.map(shift => {
                                             const meta = STATUS_META[shift.admin_status] ?? STATUS_META.pending;
                                             return (
                                                 <tr key={shift.id}>
