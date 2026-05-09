@@ -20,10 +20,8 @@ export default function Dashboard() {
     const [isBulkMode, setIsBulkMode] = useState(false);
     const [selectedDates, setSelectedDates] = useState([]);
 
-    // ログインユーザー情報を取得
     const { auth } = usePage().props;
 
-    // 管理者の場合は別のコンポーネントを返す
     if (auth.user.role === 'admin') {
         return <AdminDashboard auth={auth} />;
     }
@@ -33,7 +31,7 @@ export default function Dashboard() {
             const response = await axios.get('/shifts');
             setShifts(response.data);
         } catch (error) {
-            console.error("データ取得失敗", error);
+            console.error('データ取得失敗', error);
         }
     };
 
@@ -41,129 +39,167 @@ export default function Dashboard() {
         fetchShifts();
     }, []);
 
-    // 日付クリック時
     const handleDateClick = (date) => {
         if (isBulkMode) {
-            // 一括モード時は、配列に追加したり外したりする
             const dateStr = format(date, 'yyyy-MM-dd');
             setSelectedDates(prev => {
                 const isAlreadySelected = prev.some(d => format(d, 'yyyy-MM-dd') === dateStr);
                 if (isAlreadySelected) {
-                    return prev.filter(d => format(d, 'yyyy-MM-dd') !== dateStr); // 選択解除
+                    return prev.filter(d => format(d, 'yyyy-MM-dd') !== dateStr);
                 } else {
-                    return [...prev, date]; // 選択追加
+                    return [...prev, date];
                 }
             });
         } else {
-            // 通常モード時はそのままモーダルを開く
             setSelectedDate(date);
             setIsModalOpen(true);
         }
     };
 
-    // 保存時
     const handleSave = (e) => {
         e.preventDefault();
-        
-        // 送信する日付を配列にする（一括なら複数、通常なら1つ）
-        const datesToSubmit = isBulkMode 
+
+        const datesToSubmit = isBulkMode
             ? selectedDates.map(d => format(d, 'yyyy-MM-dd'))
             : [format(selectedDate, 'yyyy-MM-dd')];
 
         router.post('/shifts', {
-            dates: datesToSubmit, // date ではなく dates で配列を送る
+            dates: datesToSubmit,
             status: status,
             start_time: status === 'work' ? startTime : null,
             end_time: status === 'work' ? endTime : null,
         }, {
             onSuccess: () => {
                 setIsModalOpen(false);
-                setSelectedDates([]); // 選択リセット
+                setSelectedDates([]);
                 fetchShifts();
                 setFlashMessage(
                     <span>
                         希望を送信しました。<br className="block sm:hidden" />店長の承認をお待ちください。
                     </span>
                 );
-                setTimeout(() => setFlashMessage(''), 4000); // 4秒後に消す
+                setTimeout(() => setFlashMessage(''), 4000);
             }
         });
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト表</h2>}>
+        <AuthenticatedLayout
+            header={
+                <div className="flex flex-col gap-1">
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">シフト表</h2>
+                    <p className="text-xs text-slate-500">出勤希望・休み希望を提出できます</p>
+                </div>
+            }
+        >
             <Head title="シフト表" />
 
             {flashMessage && (
-                <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-xl shadow-2xl z-[100] flex items-center space-x-2 transition-all w-max max-w-[90vw] text-left">
-                    {/* インフォメーションのアイコン */}
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span className="font-bold text-sm leading-tight">{flashMessage}</span>
+                <div className="fixed left-1/2 top-5 z-[100] flex w-max max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-2xl bg-slate-900/95 px-5 py-3 text-white shadow-pop ring-1 ring-white/10 backdrop-blur animate-slideDown">
+                    <svg className="h-5 w-5 flex-shrink-0 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-medium leading-tight">{flashMessage}</span>
                 </div>
             )}
 
             <div className="py-8">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
                     {/* 一括申請モードのスイッチ */}
-                    <div className="flex justify-end mb-4 px-4 sm:px-0">
-                        <label className="flex items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-sm border">
-                            <span className="mr-3 text-sm font-bold text-gray-700">一括選択</span>
-                            <div className="relative">
-                                <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={() => {
-                                    setIsBulkMode(!isBulkMode);
-                                    setSelectedDates([]); 
-                                }} />
-                                <div className={`block w-12 h-6 rounded-full transition-colors ${isBulkMode ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                                <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isBulkMode ? 'transform translate-x-6' : ''}`}></div>
-                            </div>
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="hidden text-sm text-slate-500 sm:block">
+                            日付をタップして希望を提出してください
+                        </div>
+                        <label className="ml-auto flex cursor-pointer items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm transition hover:shadow">
+                            <span className="text-sm font-semibold text-slate-700">一括選択</span>
+                            <span className="relative inline-block">
+                                <input
+                                    type="checkbox"
+                                    className="peer sr-only"
+                                    checked={isBulkMode}
+                                    onChange={() => {
+                                        setIsBulkMode(!isBulkMode);
+                                        setSelectedDates([]);
+                                    }}
+                                />
+                                <span className="block h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-gradient-to-r peer-checked:from-brand-500 peer-checked:to-violet-500"></span>
+                                <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                            </span>
                         </label>
                     </div>
 
-                    {/* カレンダーに selectedDates を渡す */}
                     <ShiftCalendar shifts={shifts} onDateClick={handleDateClick} selectedDates={selectedDates} />
                 </div>
             </div>
 
-            {/* 一括申請用のフローティングボタン（複数選択されている時だけ表示） */}
+            {/* 一括申請用のフローティングボタン */}
             {isBulkMode && selectedDates.length > 0 && (
-                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-6 py-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-blue-200 z-[90] flex items-center space-x-4 w-max">
-                    <span className="font-bold text-gray-700 text-sm">{selectedDates.length}件を選択中</span>
-                    <PrimaryButton onClick={() => setIsModalOpen(true)}>まとめて申請</PrimaryButton>
+                <div className="fixed bottom-6 left-1/2 z-[90] flex w-max -translate-x-1/2 items-center gap-3 rounded-full bg-white px-5 py-3 shadow-pop ring-1 ring-slate-200/70 animate-slideDown">
+                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-violet-500 px-1.5 text-xs font-bold text-white">
+                            {selectedDates.length}
+                        </span>
+                        日を選択中
+                    </span>
+                    <PrimaryButton onClick={() => setIsModalOpen(true)}>
+                        まとめて申請
+                    </PrimaryButton>
                 </div>
             )}
 
             <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <form onSubmit={handleSave} className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 border-b pb-2 text-center sm:text-left">
-                        {/* モーダルのタイトルを動的に変える */}
-                        {isBulkMode 
-                            ? `${selectedDates.length}日分の希望提出`
-                            : (selectedDate && format(selectedDate, 'yyyy年MM月dd日') + ' の希望提出')
-                        }
-                    </h2>
+                <form onSubmit={handleSave} className="p-6 sm:p-7">
+                    <div className="border-b border-slate-100 pb-4">
+                        <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+                            {isBulkMode
+                                ? `${selectedDates.length}日分の希望提出`
+                                : (selectedDate && format(selectedDate, 'yyyy年MM月dd日') + ' の希望提出')
+                            }
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                            提出後は店長の承認を待つ状態になります
+                        </p>
+                    </div>
 
-                    <div className="mt-6 space-y-6">
-                        <div className="flex justify-center sm:justify-start gap-4">
-                            <label className="flex items-center">
-                                <input type="radio" value="work" checked={status === 'work'} onChange={(e) => setStatus(e.target.value)} className="mr-2" />
-                                シフト希望（出勤）
-                            </label>
-                            <label className="flex items-center">
-                                <input type="radio" value="off" checked={status === 'off'} onChange={(e) => setStatus(e.target.value)} className="mr-2" />
-                                休み希望
-                            </label>
+                    <div className="mt-5 space-y-5">
+                        <div>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">種類</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition ${
+                                    status === 'work'
+                                        ? 'border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-200'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                }`}>
+                                    <input type="radio" value="work" checked={status === 'work'} onChange={(e) => setStatus(e.target.value)} className="sr-only" />
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    出勤希望
+                                </label>
+                                <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition ${
+                                    status === 'off'
+                                        ? 'border-slate-700 bg-slate-100 text-slate-800 ring-2 ring-slate-300'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                }`}>
+                                    <input type="radio" value="off" checked={status === 'off'} onChange={(e) => setStatus(e.target.value)} className="sr-only" />
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+                                    休み希望
+                                </label>
+                            </div>
                         </div>
 
                         {status === 'work' && (
-                            <div className="flex justify-center sm:justify-start items-center gap-2 animate-fadeIn">
-                                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
-                                <span>〜</span>
-                                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
+                            <div className="animate-fadeIn">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">時間</p>
+                                <div className="flex items-center gap-2">
+                                    <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30" />
+                                    <span className="text-slate-400">〜</span>
+                                    <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30" />
+                                </div>
                             </div>
                         )}
                     </div>
-                    <div className="mt-6 flex justify-center sm:justify-end gap-3">
+
+                    <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
                         <SecondaryButton onClick={() => setIsModalOpen(false)}>キャンセル</SecondaryButton>
                         <PrimaryButton>希望を送信</PrimaryButton>
                     </div>

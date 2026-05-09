@@ -8,29 +8,29 @@ export default function Edit({ mustVerifyEmail, status }) {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    プロフィール
-                </h2>
+                <div>
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">プロフィール</h2>
+                    <p className="mt-0.5 text-xs text-slate-500">アカウント情報・パスワードの管理</p>
+                </div>
             }
         >
             <Head title="プロフィール" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+            <div className="py-8">
+                <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
+                    <div className="rounded-2xl bg-white p-6 shadow-card ring-1 ring-slate-200/70 sm:p-8">
                         <UpdateProfileInformationForm
                             mustVerifyEmail={mustVerifyEmail}
                             status={status}
-                            className="max-w-xl"
                         />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <UpdatePasswordForm className="max-w-xl" />
+                    <div className="rounded-2xl bg-white p-6 shadow-card ring-1 ring-slate-200/70 sm:p-8">
+                        <UpdatePasswordForm />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <DeleteUserForm className="max-w-xl" />
+                    <div className="rounded-2xl border border-rose-200/70 bg-rose-50/40 p-6 shadow-card sm:p-8">
+                        <DeleteUserForm />
                     </div>
                 </div>
             </div>

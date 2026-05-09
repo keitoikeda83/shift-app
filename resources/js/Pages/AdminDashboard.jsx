@@ -10,10 +10,17 @@ import DangerButton from '@/Components/DangerButton';
 
 // 状態ラベル定義
 const STATUS_META = {
-    pending:  { label: '未確定', cellClass: 'bg-red-50 text-red-700 ring-red-600/10',       badgeClass: 'bg-red-100 text-red-700' },
-    draft:    { label: '仮',     cellClass: 'bg-yellow-50 text-yellow-800 ring-yellow-600/20', badgeClass: 'bg-yellow-100 text-yellow-800' },
-    approved: { label: '確定',   cellClass: 'bg-green-50 text-green-700 ring-green-600/10',  badgeClass: 'bg-green-100 text-green-700' },
+    pending:  { label: '未確定',   pill: 'status-pill status-pill-pending',   cell: 'cell-pending',   dot: 'bg-rose-500' },
+    draft:    { label: '仮シフト', pill: 'status-pill status-pill-draft',     cell: 'cell-draft',     dot: 'bg-amber-500' },
+    approved: { label: '確定',     pill: 'status-pill status-pill-approved',  cell: 'cell-approved',  dot: 'bg-emerald-500' },
 };
+
+const FILTER_OPTIONS = [
+    { value: 'all',      label: 'すべて' },
+    { value: 'pending',  label: '未確定' },
+    { value: 'draft',    label: '仮シフト' },
+    { value: 'approved', label: '確定' },
+];
 
 export default function AdminDashboard({ auth }) {
     const [activeTab, setActiveTab] = useState('matrix'); // 'matrix' | 'pending' | 'trash'
@@ -21,16 +28,16 @@ export default function AdminDashboard({ auth }) {
     const [employees, setEmployees] = useState([]);
     const [pendingShifts, setPendingShifts] = useState([]);
     const [trashedShifts, setTrashedShifts] = useState([]);
-    const [shiftFilter, setShiftFilter] = useState('all'); // 'all' | 'pending' | 'draft' | 'approved'
+    const [shiftFilter, setShiftFilter] = useState('all');
 
     // モーダル系
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editingShift, setEditingShift] = useState(null);  // 編集対象（既存シフト）
-    const [editTarget, setEditTarget] = useState(null);      // 新規作成時の {date, employee}
-    const [editStatus, setEditStatus] = useState('work');    // 'work' | 'off'
+    const [editingShift, setEditingShift] = useState(null);
+    const [editTarget, setEditTarget] = useState(null);
+    const [editStatus, setEditStatus] = useState('work');
     const [editStartTime, setEditStartTime] = useState('');
     const [editEndTime, setEditEndTime] = useState('');
-    const [modalMode, setModalMode] = useState('view');      // 'view' | 'createDraft' | 'bulkApprove' | 'bulkToDraft'
+    const [modalMode, setModalMode] = useState('view');
 
     const [flashMessage, setFlashMessage] = useState('');
     const [isBulkMode, setIsBulkMode] = useState(false);
@@ -42,10 +49,10 @@ export default function AdminDashboard({ auth }) {
     const [selectedTrashedIds, setSelectedTrashedIds] = useState([]);
     const [isForceDeleteConfirmOpen, setIsForceDeleteConfirmOpen] = useState(false);
 
-    // ゴミ箱フィルタ ('all' または 値)
-    const [trashFilterMonth, setTrashFilterMonth] = useState('all');         // 'yyyy-MM'
-    const [trashFilterUserId, setTrashFilterUserId] = useState('all');       // user.id (number)
-    const [trashFilterDeletedDate, setTrashFilterDeletedDate] = useState('all'); // 'yyyy-MM-dd'
+    // ゴミ箱フィルタ
+    const [trashFilterMonth, setTrashFilterMonth] = useState('all');
+    const [trashFilterUserId, setTrashFilterUserId] = useState('all');
+    const [trashFilterDeletedDate, setTrashFilterDeletedDate] = useState('all');
 
     const showFlash = (msg) => {
         setFlashMessage(msg);
@@ -83,16 +90,13 @@ export default function AdminDashboard({ auth }) {
         if (activeTab === 'trash') fetchTrashedData();
     }, [activeTab]);
 
-    // 一括選択モード切替時、選択をリセット
     const toggleBulkMode = () => {
         setIsBulkMode(!isBulkMode);
         setSelectedShiftIds([]);
     };
 
-    // セルクリック時の処理
     const handleCellClick = ({ shift, employee, date }) => {
         if (isBulkMode) {
-            // 一括選択モード: pending/draft のみ選択可能
             if (!shift) return;
             if (shift.admin_status === 'approved') return;
             setSelectedShiftIds(prev =>
@@ -103,9 +107,7 @@ export default function AdminDashboard({ auth }) {
             return;
         }
 
-        // 通常モード
         if (shift) {
-            // 既存シフトの詳細・編集
             setEditingShift({ ...shift, user: employee });
             setEditTarget(null);
             setEditStatus(shift.status);
@@ -114,7 +116,6 @@ export default function AdminDashboard({ auth }) {
             setModalMode('view');
             setIsEditModalOpen(true);
         } else {
-            // 新規 draft 作成
             setEditingShift(null);
             setEditTarget({ date, employee });
             setEditStatus('work');
@@ -248,7 +249,6 @@ export default function AdminDashboard({ auth }) {
     const submitBulkApprove = async (e) => {
         e.preventDefault();
         try {
-            // 出勤シフトが含まれる場合のみ時間を上書き、休みのみなら未指定
             const targets = allShiftsInMonth().filter(s => selectedShiftIds.includes(s.id));
             const hasWork = targets.some(s => s.status === 'work');
             await axios.put('/admin/shifts/bulk-approve', {
@@ -286,8 +286,6 @@ export default function AdminDashboard({ auth }) {
         }
     };
 
-    // 削除リクエスト: 編集モーダルが開いている場合は閉じてから確認モーダルを表示
-    // （Modal同士の重なりで onClick が通らなくなる事象を回避）
     const requestDelete = () => {
         setIsEditModalOpen(false);
         setIsRejectConfirmOpen(true);
@@ -295,13 +293,11 @@ export default function AdminDashboard({ auth }) {
 
     const cancelReject = () => {
         setIsRejectConfirmOpen(false);
-        // 単一削除の確認をキャンセルした時は編集モーダルへ戻す
         if (editingShift) setIsEditModalOpen(true);
     };
 
     const executeReject = async () => {
         try {
-            // editingShift がセットされていれば単一削除、無ければ選択中の一括削除
             if (editingShift) {
                 await axios.delete(`/admin/shifts/${editingShift.id}/reject`);
             } else if (selectedShiftIds.length > 0) {
@@ -372,7 +368,6 @@ export default function AdminDashboard({ auth }) {
     // ── 補助 ───────────────────────────────
     const allShiftsInMonth = () => employees.flatMap(e => e.shifts || []);
 
-    // 現在選択中のシフト一覧（一括操作モーダル表示用）
     const selectedShifts = useMemo(
         () => allShiftsInMonth().filter(s => selectedShiftIds.includes(s.id)),
         [employees, selectedShiftIds]
@@ -423,30 +418,26 @@ export default function AdminDashboard({ auth }) {
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    // 月内 draft 件数
     const draftCount = useMemo(
         () => allShiftsInMonth().filter(s => s.admin_status === 'draft').length,
         [employees]
     );
 
-    // 月内 pending 件数（一括確定時にゴミ箱へ移動される対象）
     const pendingCountInMonth = useMemo(
         () => allShiftsInMonth().filter(s => s.admin_status === 'pending').length,
         [employees]
     );
 
     // ── ゴミ箱フィルタ ────────────────────────────────────
-    // 候補: 月（シフトの date 月）
     const trashMonthOptions = useMemo(() => {
         const set = new Set(
             trashedShifts
                 .map(s => (typeof s.date === 'string' ? s.date.substring(0, 7) : null))
                 .filter(Boolean)
         );
-        return Array.from(set).sort((a, b) => b.localeCompare(a)); // 新しい順
+        return Array.from(set).sort((a, b) => b.localeCompare(a));
     }, [trashedShifts]);
 
-    // 候補: 従業員
     const trashUserOptions = useMemo(() => {
         const map = new Map();
         trashedShifts.forEach(s => {
@@ -459,7 +450,6 @@ export default function AdminDashboard({ auth }) {
             .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
     }, [trashedShifts]);
 
-    // 候補: 削除日（deleted_at の yyyy-MM-dd）
     const trashDeletedDateOptions = useMemo(() => {
         const set = new Set();
         trashedShifts.forEach(s => {
@@ -468,10 +458,9 @@ export default function AdminDashboard({ auth }) {
                 set.add(format(new Date(s.deleted_at), 'yyyy-MM-dd'));
             } catch (_) { /* skip */ }
         });
-        return Array.from(set).sort((a, b) => b.localeCompare(a)); // 新しい順
+        return Array.from(set).sort((a, b) => b.localeCompare(a));
     }, [trashedShifts]);
 
-    // フィルタ済みリスト
     const filteredTrashedShifts = useMemo(() => {
         return trashedShifts.filter(s => {
             if (trashFilterMonth !== 'all') {
@@ -499,7 +488,6 @@ export default function AdminDashboard({ auth }) {
         setSelectedTrashedIds([]);
     };
 
-    // フィルタ変更時、表示外の選択IDを掃除する
     useEffect(() => {
         const visibleIds = new Set(filteredTrashedShifts.map(s => s.id));
         setSelectedTrashedIds(prev => prev.filter(id => visibleIds.has(id)));
@@ -508,223 +496,277 @@ export default function AdminDashboard({ auth }) {
     const isTrashFilterActive =
         trashFilterMonth !== 'all' || trashFilterUserId !== 'all' || trashFilterDeletedDate !== 'all';
 
+    // ── レンダリング補助 ───────────────────────────────────
+    const tabs = [
+        { key: 'matrix',  label: 'シフト一覧表' },
+        { key: 'pending', label: '申請一覧',     badge: pendingShifts.length },
+        { key: 'trash',   label: 'ゴミ箱' },
+    ];
+
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト管理</h2>}>
+        <AuthenticatedLayout
+            header={
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-xl font-semibold tracking-tight text-slate-900">シフト管理</h2>
+                        <p className="mt-0.5 text-xs text-slate-500">月別マトリックス・申請対応・ゴミ箱を一元管理</p>
+                    </div>
+                </div>
+            }
+        >
             <Head title="シフト管理" />
 
             {flashMessage && (
-                <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center space-x-2 transition-all">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                    <span className="font-bold text-sm">{flashMessage}</span>
+                <div className="fixed left-1/2 top-5 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-slate-900/95 px-5 py-3 text-white shadow-pop ring-1 ring-white/10 backdrop-blur animate-slideDown">
+                    <svg className="h-5 w-5 flex-shrink-0 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                    <span className="text-sm font-medium">{flashMessage}</span>
                 </div>
             )}
 
-            <div className="py-8">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div className="py-6 sm:py-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
                     {/* タブ */}
-                    <div className="flex space-x-4 mb-6 border-b pb-2">
-                        <button
-                            className={`px-4 py-2 font-bold ${activeTab === 'matrix' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
-                            onClick={() => setActiveTab('matrix')}
-                        >
-                            シフト一覧表
-                        </button>
-                        <button
-                            className={`px-4 py-2 font-bold flex items-center ${activeTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
-                            onClick={() => setActiveTab('pending')}
-                        >
-                            申請一覧
-                            {pendingShifts.length > 0 && (
-                                <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingShifts.length}</span>
-                            )}
-                        </button>
-                        <button
-                            className={`px-4 py-2 font-bold flex items-center ${activeTab === 'trash' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
-                            onClick={() => setActiveTab('trash')}
-                        >
-                            ゴミ箱
-                        </button>
+                    <div className="mb-6">
+                        <div className="segmented w-full overflow-x-auto sm:w-auto">
+                            {tabs.map(t => (
+                                <button
+                                    key={t.key}
+                                    onClick={() => setActiveTab(t.key)}
+                                    className={`segmented-item flex items-center gap-2 whitespace-nowrap ${activeTab === t.key ? 'segmented-item-active' : 'hover:text-slate-900'}`}
+                                >
+                                    {t.label}
+                                    {t.badge > 0 && (
+                                        <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                                            activeTab === t.key ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-700'
+                                        }`}>
+                                            {t.badge}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* === マトリックス === */}
                     {activeTab === 'matrix' && (
-                        <div>
-                            {/* ツールバー：上段（モード切替・CSV） */}
-                            <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-                                <label className="flex items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-sm border">
-                                    <span className="mr-3 text-sm font-bold text-gray-700">一括選択</span>
-                                    <div className="relative">
-                                        <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={toggleBulkMode} />
-                                        <div className={`block w-12 h-6 rounded-full transition-colors ${isBulkMode ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                                        <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isBulkMode ? 'transform translate-x-6' : ''}`}></div>
-                                    </div>
+                        <div className="space-y-4">
+                            {/* ツールバー上段 */}
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <label className="flex cursor-pointer items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm transition hover:shadow">
+                                    <span className="text-sm font-semibold text-slate-700">一括選択</span>
+                                    <span className="relative inline-block">
+                                        <input type="checkbox" className="peer sr-only" checked={isBulkMode} onChange={toggleBulkMode} />
+                                        <span className="block h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-gradient-to-r peer-checked:from-brand-500 peer-checked:to-violet-500"></span>
+                                        <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                                    </span>
                                 </label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     {draftCount > 0 && (
                                         <button
                                             onClick={() => setIsApproveAllDraftsConfirmOpen(true)}
-                                            className="px-4 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 shadow-sm flex items-center"
+                                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/25 ring-1 ring-inset ring-white/10 transition hover:-translate-y-px hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
                                         >
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
-                                            仮シフトを全て確定 ({draftCount})
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            仮シフトを全て確定
+                                            <span className="rounded-full bg-white/20 px-1.5 text-[11px] font-bold">{draftCount}</span>
                                         </button>
                                     )}
-                                    <button
-                                        onClick={handleExportCSV}
-                                        className="px-4 py-2 bg-gray-600 text-white font-semibold rounded hover:bg-gray-700 shadow-sm flex items-center"
-                                    >
-                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <SecondaryButton onClick={handleExportCSV}>
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                         CSV出力
-                                    </button>
+                                    </SecondaryButton>
                                 </div>
                             </div>
 
-                            {/* ツールバー：下段（フィルター） */}
-                            <div className="flex flex-wrap items-center gap-2 mb-2 bg-white px-4 py-3 rounded-lg shadow-sm border">
-                                <span className="text-sm font-bold text-gray-700 mr-2">表示:</span>
-                                {[
-                                    { value: 'all',      label: 'すべて' },
-                                    { value: 'pending',  label: '未確定のみ' },
-                                    { value: 'draft',    label: '仮シフトのみ' },
-                                    { value: 'approved', label: '確定のみ' },
-                                ].map(opt => (
+                            {/* ツールバー下段（フィルター） */}
+                            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/70 px-3 py-2.5 shadow-sm backdrop-blur">
+                                <span className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">表示</span>
+                                {FILTER_OPTIONS.map(opt => (
                                     <button
                                         key={opt.value}
                                         onClick={() => setShiftFilter(opt.value)}
-                                        className={`px-3 py-1 text-sm font-semibold rounded-full transition ${
+                                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                                             shiftFilter === opt.value
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                ? 'bg-slate-900 text-white shadow-sm'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                         }`}
                                     >
+                                        {opt.value !== 'all' && (
+                                            <span className={`h-1.5 w-1.5 rounded-full ${
+                                                opt.value === 'pending'  ? 'bg-rose-500' :
+                                                opt.value === 'draft'    ? 'bg-amber-500' :
+                                                'bg-emerald-500'
+                                            }`}></span>
+                                        )}
                                         {opt.label}
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="bg-white p-6 shadow-sm sm:rounded-lg">
+                            <div className="overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-slate-200/70">
                                 {/* 月切替 */}
-                                <div className="flex justify-between items-center mb-4">
-                                    <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-4 py-2 border rounded hover:bg-gray-50">&lt; 前月</button>
-                                    <h3 className="text-xl font-bold">{format(currentMonth, 'yyyy年 MM月')}</h3>
-                                    <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 border rounded hover:bg-gray-50">次月 &gt;</button>
+                                <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 px-4 py-4 sm:px-6">
+                                    <button
+                                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                                        前月
+                                    </button>
+                                    <h3 className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+                                        {format(currentMonth, 'yyyy年 MM月')}
+                                    </h3>
+                                    <button
+                                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
+                                    >
+                                        次月
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                                    </button>
                                 </div>
 
                                 {/* 凡例 */}
-                                <div className="flex flex-wrap gap-4 mb-3 text-xs">
-                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-red-600/10 bg-red-50"></span> 未確定</span>
-                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-yellow-600/20 bg-yellow-50"></span> 仮シフト</span>
-                                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-green-600/10 bg-green-50"></span> 確定</span>
+                                <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/40 px-4 py-3 text-xs sm:px-6">
+                                    <span className="status-pill status-pill-pending">未確定</span>
+                                    <span className="status-pill status-pill-draft">仮シフト</span>
+                                    <span className="status-pill status-pill-approved">確定</span>
                                 </div>
 
                                 {/* テーブル */}
-                                <div className="overflow-x-auto relative shadow ring-1 ring-black ring-opacity-5 rounded">
-                                    <table className="min-w-full divide-y divide-gray-300 border-collapse">
-                                        <thead className="bg-gray-50">
+                                <div className="relative overflow-x-auto">
+                                    <table className="min-w-full border-collapse">
+                                        <thead className="bg-slate-50/80">
                                             <tr>
-                                                <th scope="col" className="sticky left-0 z-10 bg-gray-100 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 border-b border-r shadow-[1px_0_0_0_#e5e7eb] min-w-[120px]">
+                                                <th
+                                                    scope="col"
+                                                    className="sticky left-0 z-10 min-w-[140px] border-b border-r border-slate-200/70 bg-slate-50/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur"
+                                                >
                                                     従業員
                                                 </th>
                                                 {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
                                                     const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                                                     const weekDayIndex = dateObj.getDay();
                                                     const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-                                                    let textColor = 'text-gray-900';
-                                                    if (weekDayIndex === 0) textColor = 'text-red-600';
-                                                    if (weekDayIndex === 6) textColor = 'text-blue-600';
+                                                    let textColor = 'text-slate-700';
+                                                    if (weekDayIndex === 0) textColor = 'text-rose-500';
+                                                    if (weekDayIndex === 6) textColor = 'text-sky-500';
                                                     const dateStrForHeader = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                                                     const isToday = dateStrForHeader === todayStr;
                                                     return (
-                                                        <th key={day} scope="col" className={`px-3 py-2 text-center border-b border-r min-w-[90px] ${textColor} ${isToday ? 'bg-indigo-50' : ''}`}>
-                                                            <div className="text-sm font-semibold">{day}</div>
-                                                            <div className="text-xs font-normal">({weekDays[weekDayIndex]})</div>
+                                                        <th
+                                                            key={day}
+                                                            scope="col"
+                                                            className={`min-w-[88px] border-b border-r border-slate-200/70 px-2 py-2 text-center ${textColor} ${isToday ? 'bg-brand-50/70' : ''}`}
+                                                        >
+                                                            <div className={`mx-auto inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                                                                isToday ? 'bg-gradient-to-br from-brand-500 to-violet-500 text-white shadow-sm shadow-brand-600/30' : ''
+                                                            }`}>
+                                                                {day}
+                                                            </div>
+                                                            <div className="text-[10px] font-medium opacity-70">{weekDays[weekDayIndex]}</div>
                                                         </th>
                                                     );
                                                 })}
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200 bg-white">
-                                            {employees.length > 0 ? employees.map(employee => (
-                                                <tr key={employee.id} className="hover:bg-gray-50">
-                                                    <td className="sticky left-0 z-10 bg-white whitespace-nowrap py-4 pl-4 pr-3 text-sm font-bold text-gray-900 border-r shadow-[1px_0_0_0_#e5e7eb]">
-                                                        {employee.name}
-                                                    </td>
-                                                    {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
-                                                        const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                                        const shift = employee.shifts?.find(s => s.date === dateStr);
-                                                        const isToday = dateStr === todayStr;
+                                        <tbody className="bg-white">
+                                            {employees.length > 0 ? employees.map(employee => {
+                                                const initial = employee.name?.charAt(0) ?? '?';
+                                                return (
+                                                    <tr key={employee.id} className="group transition hover:bg-brand-50/20">
+                                                        <td className="sticky left-0 z-10 whitespace-nowrap border-b border-r border-slate-100 bg-white px-4 py-3 text-sm font-semibold text-slate-900 group-hover:bg-brand-50/40">
+                                                            <span className="inline-flex items-center gap-2">
+                                                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-semibold text-white">
+                                                                    {initial}
+                                                                </span>
+                                                                {employee.name}
+                                                            </span>
+                                                        </td>
+                                                        {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1).map(day => {
+                                                            const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                                            const shift = employee.shifts?.find(s => s.date === dateStr);
+                                                            const isToday = dateStr === todayStr;
+                                                            const filteredOut = shiftFilter !== 'all' && (!shift || shift.admin_status !== shiftFilter);
 
-                                                        // フィルター適用
-                                                        const filteredOut = shiftFilter !== 'all' && (!shift || shift.admin_status !== shiftFilter);
+                                                            return (
+                                                                <td
+                                                                    key={day}
+                                                                    className={`whitespace-nowrap border-b border-r border-slate-100 px-1 py-1.5 text-center text-sm ${isToday ? 'bg-brand-50/30' : ''}`}
+                                                                >
+                                                                    {(() => {
+                                                                        if (filteredOut) {
+                                                                            return <span className="text-slate-200">–</span>;
+                                                                        }
+                                                                        if (!shift) {
+                                                                            return (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    disabled={isBulkMode}
+                                                                                    onClick={() => handleCellClick({ shift: null, employee, date: dateStr })}
+                                                                                    className={`flex h-12 w-full items-center justify-center rounded-lg text-sm transition ${
+                                                                                        isBulkMode
+                                                                                            ? 'cursor-default text-slate-200'
+                                                                                            : 'text-slate-300 hover:bg-brand-50 hover:text-brand-600'
+                                                                                    }`}
+                                                                                    title={isBulkMode ? '' : 'クリックで仮シフト作成'}
+                                                                                >
+                                                                                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                                                                </button>
+                                                                            );
+                                                                        }
 
-                                                        return (
-                                                            <td
-                                                                key={day}
-                                                                className={`whitespace-nowrap px-1 py-2 text-sm text-center border-r ${isToday ? 'bg-indigo-50/40' : ''}`}
-                                                            >
-                                                                {(() => {
-                                                                    if (filteredOut) {
-                                                                        return <span className="text-gray-200">-</span>;
-                                                                    }
-                                                                    if (!shift) {
-                                                                        // 空セル → 通常モードでは新規draft作成可、一括モードでは無効
+                                                                        const meta = STATUS_META[shift.admin_status] ?? STATUS_META.pending;
+                                                                        const isSelectable = isBulkMode && shift.admin_status !== 'approved';
+                                                                        const isSelected = selectedShiftIds.includes(shift.id);
+                                                                        const clickable = !isBulkMode || isSelectable;
+
                                                                         return (
-                                                                            <button
-                                                                                type="button"
-                                                                                disabled={isBulkMode}
-                                                                                onClick={() => handleCellClick({ shift: null, employee, date: dateStr })}
-                                                                                className={`w-full h-full px-1 py-1 text-gray-300 ${
-                                                                                    isBulkMode ? 'cursor-default' : 'hover:bg-blue-50 hover:text-blue-600 rounded transition-colors'
+                                                                            <div
+                                                                                onClick={() => clickable && handleCellClick({ shift, employee, date: dateStr })}
+                                                                                className={`relative flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-semibold ring-1 ring-inset transition ${
+                                                                                    clickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-sm' : 'cursor-default'
+                                                                                } ${
+                                                                                    isSelected
+                                                                                        ? 'bg-brand-100 text-brand-800 ring-brand-300'
+                                                                                        : meta.cell
                                                                                 }`}
-                                                                                title={isBulkMode ? '' : 'クリックで仮シフト作成'}
                                                                             >
-                                                                                +
-                                                                            </button>
+                                                                                {isSelected && (
+                                                                                    <span className="absolute inset-0 rounded-lg ring-2 ring-brand-500 animate-pulseRing pointer-events-none"></span>
+                                                                                )}
+                                                                                {shift.admin_status !== 'approved' && (
+                                                                                    <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide opacity-80">
+                                                                                        <span className={`inline-block h-1 w-1 rounded-full ${meta.dot}`}></span>
+                                                                                        {meta.label}
+                                                                                    </span>
+                                                                                )}
+                                                                                {shift.status === 'work' ? (
+                                                                                    <>
+                                                                                        <span className="font-bold tabular-nums">{shift.start_time?.substring(0, 5)}</span>
+                                                                                        <span className="text-[9px] opacity-50">〜</span>
+                                                                                        <span className="font-bold tabular-nums">{shift.end_time?.substring(0, 5)}</span>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <span className="py-1 text-base font-bold">休</span>
+                                                                                )}
+                                                                            </div>
                                                                         );
-                                                                    }
-
-                                                                    const meta = STATUS_META[shift.admin_status] ?? STATUS_META.pending;
-                                                                    const isSelectable = isBulkMode && shift.admin_status !== 'approved';
-                                                                    const isSelected = selectedShiftIds.includes(shift.id);
-                                                                    const clickable = !isBulkMode || isSelectable;
-
-                                                                    return (
-                                                                        <div
-                                                                            onClick={() => clickable && handleCellClick({ shift, employee, date: dateStr })}
-                                                                            className={`flex flex-col items-center justify-center rounded-md px-1 py-1 text-xs font-medium ring-1 ring-inset ${
-                                                                                clickable ? 'cursor-pointer hover:opacity-70 transition-opacity' : 'cursor-default'
-                                                                            } ${
-                                                                                isSelected
-                                                                                    ? 'relative bg-blue-100 text-blue-700 ring-transparent after:absolute after:inset-0 after:rounded-md after:ring-2 after:ring-blue-500 after:animate-pulse after:pointer-events-none'
-                                                                                    : meta.cellClass
-                                                                            }`}
-                                                                        >
-                                                                            {shift.admin_status !== 'approved' && (
-                                                                                <span className={`text-[9px] mb-0.5 font-bold px-1 rounded ${meta.badgeClass}`}>
-                                                                                    {meta.label}
-                                                                                </span>
-                                                                            )}
-                                                                            {shift.status === 'work' ? (
-                                                                                <>
-                                                                                    <span>{shift.start_time?.substring(0, 5)}</span>
-                                                                                    <span className="text-[9px] opacity-50">|</span>
-                                                                                    <span>{shift.end_time?.substring(0, 5)}</span>
-                                                                                </>
-                                                                            ) : (
-                                                                                <span className="py-1">休</span>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })()}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            )) : (
+                                                                    })()}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                );
+                                            }) : (
                                                 <tr>
-                                                    <td colSpan={32} className="py-8 text-center text-gray-500">
-                                                        登録されている従業員がいません
+                                                    <td colSpan={32} className="px-6 py-16 text-center">
+                                                        <div className="mx-auto flex max-w-sm flex-col items-center gap-2 text-slate-500">
+                                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                                                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-9a4 4 0 11-8 0 4 4 0 018 0zm6 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                                            </div>
+                                                            <p className="text-sm font-medium">登録されている従業員がいません</p>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             )}
@@ -737,73 +779,107 @@ export default function AdminDashboard({ auth }) {
 
                     {/* === 申請一覧 === */}
                     {activeTab === 'pending' && (
-                        <div className="bg-white p-6 shadow-sm sm:rounded-lg">
+                        <div className="overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-slate-200/70">
+                            <div className="border-b border-slate-200/70 px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-base font-semibold tracking-tight text-slate-900">申請一覧</h3>
+                                    <span className="status-pill status-pill-pending">{pendingShifts.length}件</span>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500">未対応の申請を一覧で表示しています</p>
+                            </div>
                             {pendingShifts.length === 0 ? (
-                                <p className="text-gray-500">現在、未承認の申請はありません。</p>
+                                <div className="flex flex-col items-center gap-2 px-6 py-16 text-slate-500">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500">
+                                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                    </div>
+                                    <p className="text-sm font-medium">未対応の申請はありません</p>
+                                </div>
                             ) : (
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">従業員</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">希望時間/種類</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {pendingShifts.map(shift => (
-                                            <tr key={shift.id}>
-                                                <td className="px-6 py-4 whitespace-nowrap">{shift.date}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">{shift.user?.name}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {shift.status === 'work' ? `${shift.start_time?.substring(0, 5)} 〜 ${shift.end_time?.substring(0, 5)}` : '休み希望'}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingShift(shift);
-                                                            setEditTarget(null);
-                                                            setEditStatus(shift.status);
-                                                            setEditStartTime(shift.start_time ? shift.start_time.substring(0, 5) : '18:00');
-                                                            setEditEndTime(shift.end_time ? shift.end_time.substring(0, 5) : '23:00');
-                                                            setModalMode('view');
-                                                            setIsEditModalOpen(true);
-                                                        }}
-                                                        className="text-blue-600 hover:text-blue-900"
-                                                    >
-                                                        詳細
-                                                    </button>
-                                                </td>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-100">
+                                        <thead className="bg-slate-50/70">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">日付</th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">従業員</th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">希望内容</th>
+                                                <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">操作</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                            {pendingShifts.map(shift => (
+                                                <tr key={shift.id} className="transition hover:bg-slate-50/60">
+                                                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium tabular-nums text-slate-900">{shift.date}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">
+                                                        <span className="inline-flex items-center gap-2">
+                                                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-slate-700 to-slate-900 text-[10px] font-semibold text-white">
+                                                                {shift.user?.name?.charAt(0) ?? '?'}
+                                                            </span>
+                                                            {shift.user?.name}
+                                                        </span>
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">
+                                                        {shift.status === 'work' ? (
+                                                            <span className="tabular-nums">{shift.start_time?.substring(0, 5)} 〜 {shift.end_time?.substring(0, 5)}</span>
+                                                        ) : (
+                                                            <span className="status-pill bg-slate-100 text-slate-700 ring-slate-200">休み希望</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingShift(shift);
+                                                                setEditTarget(null);
+                                                                setEditStatus(shift.status);
+                                                                setEditStartTime(shift.start_time ? shift.start_time.substring(0, 5) : '18:00');
+                                                                setEditEndTime(shift.end_time ? shift.end_time.substring(0, 5) : '23:00');
+                                                                setModalMode('view');
+                                                                setIsEditModalOpen(true);
+                                                            }}
+                                                            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 hover:text-brand-700"
+                                                        >
+                                                            詳細
+                                                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
                         </div>
                     )}
 
                     {/* === ゴミ箱 === */}
                     {activeTab === 'trash' && (
-                        <div className="bg-white p-6 shadow-sm sm:rounded-lg">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold text-gray-800">削除済みシフト（ゴミ箱）</h3>
+                        <div className="overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-slate-200/70">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-6 py-4">
+                                <div>
+                                    <h3 className="text-base font-semibold tracking-tight text-slate-900">ゴミ箱</h3>
+                                    <p className="mt-0.5 text-xs text-slate-500">削除されたシフトを管理します（復元・完全削除）</p>
+                                </div>
                                 {selectedTrashedIds.length > 0 && (
                                     <div className="flex gap-2">
-                                        <PrimaryButton onClick={bulkRestoreShifts}>選択を復元 ({selectedTrashedIds.length})</PrimaryButton>
-                                        <DangerButton onClick={() => setIsForceDeleteConfirmOpen(true)}>完全削除 ({selectedTrashedIds.length})</DangerButton>
+                                        <PrimaryButton onClick={bulkRestoreShifts}>
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                            復元 ({selectedTrashedIds.length})
+                                        </PrimaryButton>
+                                        <DangerButton onClick={() => setIsForceDeleteConfirmOpen(true)}>
+                                            完全削除 ({selectedTrashedIds.length})
+                                        </DangerButton>
                                     </div>
                                 )}
                             </div>
 
                             {/* フィルター */}
                             {trashedShifts.length > 0 && (
-                                <div className="mb-4 p-3 bg-gray-50 border rounded-lg flex flex-wrap items-end gap-3">
-                                    <div className="flex flex-col">
-                                        <label className="text-xs font-bold text-gray-600 mb-1">月</label>
+                                <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 bg-slate-50/40 px-6 py-4">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">月</label>
                                         <select
                                             value={trashFilterMonth}
                                             onChange={e => setTrashFilterMonth(e.target.value)}
-                                            className="border-gray-300 rounded text-sm"
+                                            className="rounded-xl border-slate-200 bg-white text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30"
                                         >
                                             <option value="all">すべて</option>
                                             {trashMonthOptions.map(m => (
@@ -811,12 +887,12 @@ export default function AdminDashboard({ auth }) {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-xs font-bold text-gray-600 mb-1">従業員</label>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">従業員</label>
                                         <select
                                             value={trashFilterUserId}
                                             onChange={e => setTrashFilterUserId(e.target.value)}
-                                            className="border-gray-300 rounded text-sm"
+                                            className="rounded-xl border-slate-200 bg-white text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30"
                                         >
                                             <option value="all">すべて</option>
                                             {trashUserOptions.map(u => (
@@ -824,12 +900,12 @@ export default function AdminDashboard({ auth }) {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-xs font-bold text-gray-600 mb-1">削除日</label>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">削除日</label>
                                         <select
                                             value={trashFilterDeletedDate}
                                             onChange={e => setTrashFilterDeletedDate(e.target.value)}
-                                            className="border-gray-300 rounded text-sm"
+                                            className="rounded-xl border-slate-200 bg-white text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30"
                                         >
                                             <option value="all">すべて</option>
                                             {trashDeletedDateOptions.map(d => (
@@ -840,79 +916,98 @@ export default function AdminDashboard({ auth }) {
                                     {isTrashFilterActive && (
                                         <button
                                             onClick={resetTrashFilters}
-                                            className="text-xs text-gray-600 hover:text-gray-900 underline ml-auto"
+                                            className="ml-auto text-xs font-medium text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
                                         >
                                             フィルターをクリア
                                         </button>
                                     )}
-                                    <div className="text-xs text-gray-500 ml-auto">
-                                        表示中: <strong>{filteredTrashedShifts.length}</strong> / {trashedShifts.length} 件
+                                    <div className="text-xs text-slate-500">
+                                        表示中: <strong className="font-bold text-slate-900 tabular-nums">{filteredTrashedShifts.length}</strong> / {trashedShifts.length} 件
                                     </div>
                                 </div>
                             )}
 
                             {trashedShifts.length === 0 ? (
-                                <p className="text-gray-500">ゴミ箱は空です。</p>
+                                <div className="flex flex-col items-center gap-2 px-6 py-16 text-slate-500">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3" /></svg>
+                                    </div>
+                                    <p className="text-sm font-medium">ゴミ箱は空です</p>
+                                </div>
                             ) : filteredTrashedShifts.length === 0 ? (
-                                <p className="text-gray-500">条件に一致するシフトはありません。</p>
+                                <div className="flex flex-col items-center gap-2 px-6 py-16 text-slate-500">
+                                    <p className="text-sm font-medium">条件に一致するシフトはありません</p>
+                                </div>
                             ) : (
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-3 py-3 w-10">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={filteredTrashedShifts.length > 0 && selectedTrashedIds.length === filteredTrashedShifts.length}
-                                                    onChange={(e) => {
-                                                        setSelectedTrashedIds(e.target.checked ? filteredTrashedShifts.map(s => s.id) : []);
-                                                    }}
-                                                />
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">従業員</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">内容</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">削除元の状態</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">削除日時</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredTrashedShifts.map(shift => {
-                                            const meta = STATUS_META[shift.admin_status] ?? STATUS_META.pending;
-                                            return (
-                                                <tr key={shift.id}>
-                                                    <td className="px-3 py-4">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedTrashedIds.includes(shift.id)}
-                                                            onChange={() => {
-                                                                setSelectedTrashedIds(prev =>
-                                                                    prev.includes(shift.id)
-                                                                        ? prev.filter(id => id !== shift.id)
-                                                                        : [...prev, shift.id]
-                                                                );
-                                                            }}
-                                                        />
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">{shift.date}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">{shift.user?.name}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        {shift.status === 'work' ? `${shift.start_time?.substring(0, 5)} 〜 ${shift.end_time?.substring(0, 5)}` : '休み'}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 py-1 text-xs font-bold rounded ${meta.badgeClass}`}>{meta.label}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {shift.deleted_at ? format(new Date(shift.deleted_at), 'yyyy/MM/dd HH:mm') : ''}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                        <button onClick={() => restoreShift(shift.id)} className="text-blue-600 hover:text-blue-900 mr-3">復元</button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-100">
+                                        <thead className="bg-slate-50/70">
+                                            <tr>
+                                                <th className="w-12 px-3 py-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded-md border-slate-300 text-brand-600 focus:ring-brand-400/40"
+                                                        checked={filteredTrashedShifts.length > 0 && selectedTrashedIds.length === filteredTrashedShifts.length}
+                                                        onChange={(e) => {
+                                                            setSelectedTrashedIds(e.target.checked ? filteredTrashedShifts.map(s => s.id) : []);
+                                                        }}
+                                                    />
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">日付</th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">従業員</th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">内容</th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">削除元</th>
+                                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">削除日時</th>
+                                                <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                            {filteredTrashedShifts.map(shift => {
+                                                const meta = STATUS_META[shift.admin_status] ?? STATUS_META.pending;
+                                                return (
+                                                    <tr key={shift.id} className="transition hover:bg-slate-50/60">
+                                                        <td className="px-3 py-4">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-4 w-4 rounded-md border-slate-300 text-brand-600 focus:ring-brand-400/40"
+                                                                checked={selectedTrashedIds.includes(shift.id)}
+                                                                onChange={() => {
+                                                                    setSelectedTrashedIds(prev =>
+                                                                        prev.includes(shift.id)
+                                                                            ? prev.filter(id => id !== shift.id)
+                                                                            : [...prev, shift.id]
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium tabular-nums text-slate-900">{shift.date}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{shift.user?.name}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">
+                                                            {shift.status === 'work'
+                                                                ? <span className="tabular-nums">{shift.start_time?.substring(0, 5)} 〜 {shift.end_time?.substring(0, 5)}</span>
+                                                                : '休み'}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4">
+                                                            <span className={meta.pill}>{meta.label}</span>
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm tabular-nums text-slate-500">
+                                                            {shift.deleted_at ? format(new Date(shift.deleted_at), 'yyyy/MM/dd HH:mm') : ''}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                                                            <button
+                                                                onClick={() => restoreShift(shift.id)}
+                                                                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 hover:text-brand-700"
+                                                            >
+                                                                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                                                復元
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
                         </div>
                     )}
@@ -921,51 +1016,72 @@ export default function AdminDashboard({ auth }) {
 
             {/* ── 編集モーダル ────────────────────────────── */}
             <Modal show={isEditModalOpen} onClose={closeEditModal}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 border-b pb-2">
-                        {modalMode === 'createDraft' && '強制シフトを作成'}
-                        {modalMode === 'bulkApprove' && 'まとめて確定'}
-                        {modalMode === 'bulkToDraft' && 'まとめて仮シフトに変更'}
-                        {modalMode === 'view' && editingShift && (
-                            editingShift.admin_status === 'pending' ? 'シフト申請の対応'
-                            : editingShift.admin_status === 'draft' ? '仮シフトの編集'
-                            : '確定シフトの確認'
-                        )}
-                    </h2>
+                <div className="p-6 sm:p-7">
+                    <div className="border-b border-slate-100 pb-4">
+                        <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+                            {modalMode === 'createDraft' && '仮シフトを作成'}
+                            {modalMode === 'bulkApprove' && 'まとめて確定'}
+                            {modalMode === 'bulkToDraft' && 'まとめて仮シフトに変更'}
+                            {modalMode === 'view' && editingShift && (
+                                editingShift.admin_status === 'pending' ? 'シフト申請の対応'
+                                : editingShift.admin_status === 'draft' ? '仮シフトの編集'
+                                : '確定シフトの確認'
+                            )}
+                        </h2>
+                    </div>
 
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-5 space-y-5">
                         {/* 単一: view モード */}
                         {modalMode === 'view' && editingShift && (
                             <>
-                                <p className="text-gray-700"><strong>従業員:</strong> {editingShift.user?.name}</p>
-                                <p className="text-gray-700"><strong>日付:</strong> {editingShift.date}</p>
-                                <p className="text-gray-700">
-                                    <strong>状態:</strong>{' '}
-                                    <span className={`px-2 py-0.5 text-xs font-bold rounded ${STATUS_META[editingShift.admin_status]?.badgeClass}`}>
-                                        {STATUS_META[editingShift.admin_status]?.label}
-                                    </span>
-                                </p>
+                                <dl className="grid grid-cols-3 gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 text-sm">
+                                    <div>
+                                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">従業員</dt>
+                                        <dd className="mt-0.5 font-medium text-slate-900">{editingShift.user?.name}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">日付</dt>
+                                        <dd className="mt-0.5 font-medium tabular-nums text-slate-900">{editingShift.date}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">状態</dt>
+                                        <dd className="mt-0.5">
+                                            <span className={STATUS_META[editingShift.admin_status]?.pill}>
+                                                {STATUS_META[editingShift.admin_status]?.label}
+                                            </span>
+                                        </dd>
+                                    </div>
+                                </dl>
 
-                                {/* work/off 切替（draftの編集時のみ自由切替を許可） */}
                                 <div>
-                                    <strong className="text-gray-700">種類:</strong>
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">種類</p>
                                     {editingShift.admin_status === 'draft' ? (
-                                        <span className="ml-3 inline-flex gap-3">
-                                            <label className="flex items-center"><input type="radio" value="work" checked={editStatus==='work'} onChange={() => setEditStatus('work')} className="mr-1" />出勤</label>
-                                            <label className="flex items-center"><input type="radio" value="off"  checked={editStatus==='off'}  onChange={() => setEditStatus('off')}  className="mr-1" />休み</label>
-                                        </span>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                                                editStatus === 'work' ? 'border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-200' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                            }`}>
+                                                <input type="radio" value="work" checked={editStatus==='work'} onChange={() => setEditStatus('work')} className="sr-only" />
+                                                出勤
+                                            </label>
+                                            <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                                                editStatus === 'off' ? 'border-slate-700 bg-slate-100 text-slate-800 ring-2 ring-slate-300' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                            }`}>
+                                                <input type="radio" value="off" checked={editStatus==='off'} onChange={() => setEditStatus('off')} className="sr-only" />
+                                                休み
+                                            </label>
+                                        </div>
                                     ) : (
-                                        <span className="ml-2">{editingShift.status === 'work' ? '出勤' : '休み'}</span>
+                                        <p className="text-sm font-medium text-slate-900">{editingShift.status === 'work' ? '出勤' : '休み'}</p>
                                     )}
                                 </div>
 
                                 {editStatus === 'work' && (
                                     <div>
-                                        <label className="block font-medium text-gray-700 mb-1">時間</label>
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">時間</p>
                                         <div className="flex items-center gap-2">
-                                            <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} disabled={editingShift.admin_status==='approved'} className="border-gray-300 rounded-md shadow-sm disabled:bg-gray-100" />
-                                            <span>〜</span>
-                                            <input type="time" value={editEndTime}   onChange={(e) => setEditEndTime(e.target.value)}   disabled={editingShift.admin_status==='approved'} className="border-gray-300 rounded-md shadow-sm disabled:bg-gray-100" />
+                                            <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} disabled={editingShift.admin_status==='approved'} className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30 disabled:bg-slate-100 disabled:text-slate-500" />
+                                            <span className="text-slate-400">〜</span>
+                                            <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} disabled={editingShift.admin_status==='approved'} className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30 disabled:bg-slate-100 disabled:text-slate-500" />
                                         </div>
                                     </div>
                                 )}
@@ -975,25 +1091,43 @@ export default function AdminDashboard({ auth }) {
                         {/* 新規 draft 作成 */}
                         {modalMode === 'createDraft' && editTarget && (
                             <>
-                                <p className="text-gray-700"><strong>従業員:</strong> {editTarget.employee.name}</p>
-                                <p className="text-gray-700"><strong>日付:</strong> {editTarget.date}</p>
-                                <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200">
-                                    <p className="text-yellow-800 text-sm">仮シフトとして作成します。後から編集・確定できます。</p>
+                                <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 text-sm">
+                                    <div>
+                                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">従業員</dt>
+                                        <dd className="mt-0.5 font-medium text-slate-900">{editTarget.employee.name}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">日付</dt>
+                                        <dd className="mt-0.5 font-medium tabular-nums text-slate-900">{editTarget.date}</dd>
+                                    </div>
+                                </dl>
+                                <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+                                    仮シフトとして作成します。後から編集・確定できます。
                                 </div>
                                 <div>
-                                    <strong className="text-gray-700">種類:</strong>
-                                    <span className="ml-3 inline-flex gap-3">
-                                        <label className="flex items-center"><input type="radio" value="work" checked={editStatus==='work'} onChange={() => setEditStatus('work')} className="mr-1" />出勤</label>
-                                        <label className="flex items-center"><input type="radio" value="off"  checked={editStatus==='off'}  onChange={() => setEditStatus('off')}  className="mr-1" />休み</label>
-                                    </span>
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">種類</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                                            editStatus === 'work' ? 'border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-200' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                        }`}>
+                                            <input type="radio" value="work" checked={editStatus==='work'} onChange={() => setEditStatus('work')} className="sr-only" />
+                                            出勤
+                                        </label>
+                                        <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                                            editStatus === 'off' ? 'border-slate-700 bg-slate-100 text-slate-800 ring-2 ring-slate-300' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                        }`}>
+                                            <input type="radio" value="off" checked={editStatus==='off'} onChange={() => setEditStatus('off')} className="sr-only" />
+                                            休み
+                                        </label>
+                                    </div>
                                 </div>
                                 {editStatus === 'work' && (
                                     <div>
-                                        <label className="block font-medium text-gray-700 mb-1">時間</label>
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">時間</p>
                                         <div className="flex items-center gap-2">
-                                            <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
-                                            <span>〜</span>
-                                            <input type="time" value={editEndTime}   onChange={(e) => setEditEndTime(e.target.value)}   required className="border-gray-300 rounded-md shadow-sm" />
+                                            <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30" />
+                                            <span className="text-slate-400">〜</span>
+                                            <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} required className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30" />
                                         </div>
                                     </div>
                                 )}
@@ -1003,25 +1137,27 @@ export default function AdminDashboard({ auth }) {
                         {/* 一括確定／一括draft化 */}
                         {(modalMode === 'bulkApprove' || modalMode === 'bulkToDraft') && (
                             <>
-                                <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
-                                    <p className="text-blue-700 font-bold">
-                                        {selectedShifts.length} 件を{modalMode === 'bulkApprove' ? '確定' : '仮シフトに変更'}します。
+                                <div className="rounded-xl bg-brand-50 px-4 py-3 ring-1 ring-inset ring-brand-200">
+                                    <p className="text-sm font-bold text-brand-700">
+                                        {selectedShifts.length} 件を{modalMode === 'bulkApprove' ? '確定' : '仮シフトに変更'}します
                                     </p>
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        ※出勤希望が含まれる場合、設定した時間で全件上書きされます。
+                                    <p className="mt-1 text-xs text-brand-600">
+                                        ※ 出勤希望が含まれる場合、設定した時間で全件上書きされます
                                     </p>
                                 </div>
-                                <div className="text-gray-700 text-sm">
-                                    <strong>含まれる種類:</strong>{' '}
-                                    {[...new Set(selectedShifts.map(s => s.status === 'work' ? '出勤' : '休み'))].join('、')}
+                                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 text-sm">
+                                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">含まれる種類</dt>
+                                    <dd className="mt-0.5 font-medium text-slate-900">
+                                        {[...new Set(selectedShifts.map(s => s.status === 'work' ? '出勤' : '休み'))].join('、')}
+                                    </dd>
                                 </div>
                                 {selectedShifts.some(s => s.status === 'work') && (
                                     <div>
-                                        <label className="block font-medium text-gray-700 mb-1"><strong>時間（出勤希望に適用）</strong></label>
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">時間（出勤希望に適用）</p>
                                         <div className="flex items-center gap-2">
-                                            <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required className="border-gray-300 rounded-md shadow-sm" />
-                                            <span>〜</span>
-                                            <input type="time" value={editEndTime}   onChange={(e) => setEditEndTime(e.target.value)}   required className="border-gray-300 rounded-md shadow-sm" />
+                                            <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} required className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30" />
+                                            <span className="text-slate-400">〜</span>
+                                            <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} required className="block w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30" />
                                         </div>
                                     </div>
                                 )}
@@ -1029,12 +1165,8 @@ export default function AdminDashboard({ auth }) {
                         )}
                     </div>
 
-                    {/* アクションボタン: 「左=後退/破壊 / 右=取消+副次+主要」の2区画
-                         draft編集時は「シフト確定」が編集内容も保存して確定するため、
-                         「仮のまま保存」だけしたい場合に「仮保存」（旧:更新）を残してある */}
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        {/* 左: 削除・後退アクション */}
-                        <div className="flex flex-wrap items-center gap-3">
+                    <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+                        <div className="flex flex-wrap items-center gap-2">
                             {modalMode === 'view' && editingShift && (
                                 <DangerButton type="button" onClick={requestDelete}>削除</DangerButton>
                             )}
@@ -1043,24 +1175,20 @@ export default function AdminDashboard({ auth }) {
                             )}
                         </div>
 
-                        {/* 右: 取消 → 副次 → 主要 の順 */}
-                        <div className="flex flex-wrap items-center gap-3 ml-auto">
+                        <div className="ml-auto flex flex-wrap items-center gap-2">
                             <SecondaryButton type="button" onClick={closeEditModal}>キャンセル</SecondaryButton>
 
                             {modalMode === 'view' && editingShift && (
                                 <>
-                                    {/* pending: 「仮シフトにする」のみ主要（pending→approved 直行はさせない） */}
                                     {editingShift.admin_status === 'pending' && (
                                         <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトにする</PrimaryButton>
                                     )}
-                                    {/* draft: 仮保存（編集だけ保存）+ シフト確定（保存して確定） */}
                                     {editingShift.admin_status === 'draft' && (
                                         <>
                                             <SecondaryButton type="button" onClick={submitUpdateDraft}>仮シフト更新</SecondaryButton>
                                             <PrimaryButton type="button" onClick={submitApprove}>シフト確定</PrimaryButton>
                                         </>
                                     )}
-                                    {/* approved: 仮シフトに戻す（修正用） */}
                                     {editingShift.admin_status === 'approved' && (
                                         <PrimaryButton type="button" onClick={submitMoveToDraft}>仮シフトに戻す</PrimaryButton>
                                     )}
@@ -1068,7 +1196,7 @@ export default function AdminDashboard({ auth }) {
                             )}
 
                             {modalMode === 'createDraft' && (
-                                <PrimaryButton type="button" onClick={submitCreateDraft}>強制シフトを作成</PrimaryButton>
+                                <PrimaryButton type="button" onClick={submitCreateDraft}>作成</PrimaryButton>
                             )}
                             {modalMode === 'bulkApprove' && (
                                 <PrimaryButton type="button" onClick={submitBulkApprove}>まとめて確定</PrimaryButton>
@@ -1081,14 +1209,17 @@ export default function AdminDashboard({ auth }) {
                 </div>
             </Modal>
 
-            {/* 一括選択 フローティング: 「主要1 + 副次」に整理
-                 - 全て draft → 主要 = 確定 / 副次 = 未確定に戻す
-                 - pending を含む(or 混在) → 主要 = 仮シフト化（必ず draft を経由させる） */}
+            {/* 一括選択 フローティング */}
             {isBulkMode && selectedShiftIds.length > 0 && (() => {
                 const allDraft = selectedShifts.length > 0 && selectedShifts.every(s => s.admin_status === 'draft');
                 return (
-                    <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-6 py-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-blue-200 z-[90] flex items-center space-x-3 w-max">
-                        <span className="font-bold text-gray-700 text-sm">{selectedShiftIds.length}件を選択中</span>
+                    <div className="fixed bottom-6 left-1/2 z-[90] flex w-max -translate-x-1/2 flex-wrap items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-pop ring-1 ring-slate-200/70 sm:gap-3 sm:px-5 animate-slideDown">
+                        <span className="inline-flex items-center gap-2 pr-1 text-sm font-semibold text-slate-700">
+                            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-violet-500 px-1.5 text-xs font-bold text-white">
+                                {selectedShiftIds.length}
+                            </span>
+                            件を選択中
+                        </span>
                         <DangerButton onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
                         {allDraft && (
                             <SecondaryButton onClick={submitBulkMoveToPending}>未確定に戻す</SecondaryButton>
@@ -1104,17 +1235,24 @@ export default function AdminDashboard({ auth }) {
 
             {/* 削除確認モーダル */}
             <Modal show={isRejectConfirmOpen} onClose={cancelReject} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-bold text-gray-900">シフトの削除</h2>
-                    <div className="mt-4 text-sm text-gray-600">
-                        {editingShift ? (
-                            <p>このシフトをゴミ箱へ移動します。</p>
-                        ) : (
-                            <p><strong>{selectedShiftIds.length}件</strong> のシフトをゴミ箱へ移動します。</p>
-                        )}
-                        <p className="mt-2 text-xs text-blue-600 font-bold">※ゴミ箱から復元できます。</p>
+                <div className="p-6 sm:p-7">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-200">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3" /></svg>
+                        </div>
+                        <div className="flex-1">
+                            <h2 className="text-base font-semibold tracking-tight text-slate-900">シフトを削除しますか？</h2>
+                            <div className="mt-2 text-sm text-slate-600">
+                                {editingShift ? (
+                                    <p>このシフトをゴミ箱へ移動します。</p>
+                                ) : (
+                                    <p><strong className="font-bold text-slate-900">{selectedShiftIds.length}件</strong> のシフトをゴミ箱へ移動します。</p>
+                                )}
+                                <p className="mt-2 text-xs text-brand-600">※ ゴミ箱から復元できます</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-6 flex justify-end gap-2">
                         <SecondaryButton onClick={cancelReject}>キャンセル</SecondaryButton>
                         <DangerButton onClick={executeReject}>ゴミ箱へ移動</DangerButton>
                     </div>
@@ -1123,18 +1261,28 @@ export default function AdminDashboard({ auth }) {
 
             {/* 全draft確定確認モーダル */}
             <Modal show={isApproveAllDraftsConfirmOpen} onClose={() => setIsApproveAllDraftsConfirmOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-bold text-gray-900">仮シフトを全て確定</h2>
-                    <div className="mt-4 text-sm text-gray-600 space-y-2">
-                        <p>{format(currentMonth, 'yyyy年MM月')} の仮シフト <strong>{draftCount}件</strong> をすべて確定します。</p>
-                        {pendingCountInMonth > 0 && (
-                            <p className="text-red-600">
-                                未確定の申請 <strong>{pendingCountInMonth}件</strong> はゴミ箱へ移動します。
-                            </p>
-                        )}
-                        <p className="text-xs text-gray-500">確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。ゴミ箱へ移動した申請は、ゴミ箱タブから復元できます。</p>
+                <div className="p-6 sm:p-7">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <div className="flex-1">
+                            <h2 className="text-base font-semibold tracking-tight text-slate-900">仮シフトを全て確定</h2>
+                            <div className="mt-2 space-y-2 text-sm text-slate-600">
+                                <p>
+                                    <strong className="font-bold text-slate-900">{format(currentMonth, 'yyyy年MM月')}</strong> の仮シフト{' '}
+                                    <strong className="font-bold text-slate-900">{draftCount}件</strong> をすべて確定します。
+                                </p>
+                                {pendingCountInMonth > 0 && (
+                                    <p className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700 ring-1 ring-inset ring-rose-200">
+                                        未確定の申請 <strong className="font-bold">{pendingCountInMonth}件</strong> はゴミ箱へ移動します
+                                    </p>
+                                )}
+                                <p className="text-xs text-slate-500">確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。ゴミ箱へ移動した申請はゴミ箱タブから復元できます。</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-6 flex justify-end gap-2">
                         <SecondaryButton onClick={() => setIsApproveAllDraftsConfirmOpen(false)}>キャンセル</SecondaryButton>
                         <PrimaryButton onClick={executeApproveAllDrafts}>すべて確定する</PrimaryButton>
                     </div>
@@ -1143,13 +1291,20 @@ export default function AdminDashboard({ auth }) {
 
             {/* 完全削除確認モーダル */}
             <Modal show={isForceDeleteConfirmOpen} onClose={() => setIsForceDeleteConfirmOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-bold text-gray-900">完全削除</h2>
-                    <div className="mt-4 text-sm text-gray-600">
-                        <p><strong>{selectedTrashedIds.length}件</strong> のシフトを完全削除します。</p>
-                        <p className="mt-2 text-xs text-red-500 font-bold">※この操作は取り消せません。</p>
+                <div className="p-6 sm:p-7">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-200">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                        <div className="flex-1">
+                            <h2 className="text-base font-semibold tracking-tight text-slate-900">完全削除</h2>
+                            <div className="mt-2 text-sm text-slate-600">
+                                <p><strong className="font-bold text-slate-900">{selectedTrashedIds.length}件</strong> のシフトを完全削除します。</p>
+                                <p className="mt-2 text-xs font-semibold text-rose-600">※ この操作は取り消せません</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-6 flex justify-end gap-2">
                         <SecondaryButton onClick={() => setIsForceDeleteConfirmOpen(false)}>キャンセル</SecondaryButton>
                         <DangerButton onClick={executeForceDelete}>完全削除する</DangerButton>
                     </div>

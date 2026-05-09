@@ -7,43 +7,40 @@ export default function VerifyEmail({ status }) {
 
     const submit = (e) => {
         e.preventDefault();
-
         post(route('verification.send'));
     };
 
     return (
         <GuestLayout>
-            <Head title="Email Verification" />
+            <Head title="メール認証" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                Thanks for signing up! Before getting started, could you verify
-                your email address by clicking on the link we just emailed to
-                you? If you didn't receive the email, we will gladly send you
-                another.
+            <div className="mb-6 text-center">
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900">メール認証</h1>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                    ご登録ありがとうございます。<br />
+                    メールに記載されたリンクから認証を完了してください。
+                </p>
             </div>
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
+                <div className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                    新しい認証リンクを送信しました
                 </div>
             )}
 
-            <form onSubmit={submit}>
-                <div className="mt-4 flex items-center justify-between">
-                    <PrimaryButton disabled={processing}>
-                        Resend Verification Email
-                    </PrimaryButton>
+            <form onSubmit={submit} className="space-y-3">
+                <PrimaryButton className="w-full justify-center py-2.5" disabled={processing}>
+                    {processing ? '送信中…' : '認証メールを再送信'}
+                </PrimaryButton>
 
-                    <Link
-                        href={route('logout')}
-                        method="post"
-                        as="button"
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Log Out
-                    </Link>
-                </div>
+                <Link
+                    href={route('logout')}
+                    method="post"
+                    as="button"
+                    className="block w-full text-center text-sm font-medium text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
+                >
+                    ログアウト
+                </Link>
             </form>
         </GuestLayout>
     );
