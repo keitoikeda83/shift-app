@@ -1136,7 +1136,7 @@ export default function AdminDashboard({ auth }) {
                                 ※未確定の <strong>{pendingCount}件</strong> はゴミ箱へ移動します。
                             </p>
                         )}
-                        <ul className="mt-2 text-xs text-gray-500 list-disc list-inside space-y-1">
+                        <ul className="mt-2 text-xs text-gray-500 list-disc list-inside space-y-1 mt-6">
                             <li>確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。</li>
                             <li>ゴミ箱へ移動したシフトは復元可能です。</li>
                         </ul>
