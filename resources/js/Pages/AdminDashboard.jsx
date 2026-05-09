@@ -11,7 +11,7 @@ import DangerButton from '@/Components/DangerButton';
 // 状態ラベル定義
 const STATUS_META = {
     pending:  { label: '未確定', cellClass: 'bg-red-50 text-red-700 ring-red-600/10',       badgeClass: 'bg-red-100 text-red-700' },
-    draft:    { label: '仮',     cellClass: 'bg-yellow-50 text-yellow-800 ring-yellow-600/20', badgeClass: 'bg-yellow-100 text-yellow-800' },
+    draft:    { label: '仮シフト',     cellClass: 'bg-yellow-50 text-yellow-800 ring-yellow-600/20', badgeClass: 'bg-yellow-100 text-yellow-800' },
     approved: { label: '確定',   cellClass: 'bg-green-50 text-green-700 ring-green-600/10',  badgeClass: 'bg-green-100 text-green-700' },
 };
 
