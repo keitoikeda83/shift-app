@@ -323,6 +323,10 @@ export default function AdminDashboard({ auth }) {
             const res = await axios.put('/admin/shifts/approve-all-drafts', { month: monthStr });
             setIsApproveAllDraftsConfirmOpen(false);
             fetchAdminData();
+            // pending がゴミ箱へ移動するため、ゴミ箱データも更新
+            if (res.data?.rejected_count > 0) {
+                fetchTrashedData();
+            }
             showFlash(res.data?.message ?? '仮シフトを一括確定しました');
         } catch (error) {
             console.error('全draft確定エラー', error);
@@ -422,6 +426,12 @@ export default function AdminDashboard({ auth }) {
     // 月内 draft 件数
     const draftCount = useMemo(
         () => allShiftsInMonth().filter(s => s.admin_status === 'draft').length,
+        [employees]
+    );
+
+    // 月内 pending 件数（「仮シフトを全て確定」時にゴミ箱へ移動される対象）
+    const pendingCount = useMemo(
+        () => allShiftsInMonth().filter(s => s.admin_status === 'pending').length,
         [employees]
     );
 
@@ -1117,7 +1127,15 @@ export default function AdminDashboard({ auth }) {
                     <h2 className="text-lg font-bold text-gray-900">仮シフトを全て確定</h2>
                     <div className="mt-4 text-sm text-gray-600">
                         <p>{format(currentMonth, 'yyyy年MM月')} の仮シフト <strong>{draftCount}件</strong> をすべて確定します。</p>
-                        <p className="mt-2 text-xs text-gray-500">確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。</p>
+                        {pendingCount > 0 && (
+                            <p className="mt-2 text-xs text-red-600 font-bold">
+                                ※未確定の <strong>{pendingCount}件</strong> はゴミ箱へ移動します。
+                            </p>
+                        )}
+                        <ul className="mt-2 text-xs text-gray-500 list-disc list-inside space-y-1 mt-6">
+                            <li>確定後も、個別に「仮シフトに差し戻す」ことで再編集できます。</li>
+                            <li>ゴミ箱へ移動したシフトは復元可能です。</li>
+                        </ul>
                     </div>
                     <div className="mt-6 flex justify-end gap-3">
                         <SecondaryButton onClick={() => setIsApproveAllDraftsConfirmOpen(false)}>キャンセル</SecondaryButton>
