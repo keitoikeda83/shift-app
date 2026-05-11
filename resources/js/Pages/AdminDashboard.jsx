@@ -181,7 +181,6 @@ export default function AdminDashboard({ auth }) {
         try {
             await axios.put('/admin/shifts/bulk-to-pending', { ids: selectedShiftIds });
             setSelectedShiftIds([]);
-            setIsBulkMode(false);
             fetchAdminData();
             showFlash('選択したシフトを未確定に戻しました');
         } catch (error) {
@@ -258,7 +257,6 @@ export default function AdminDashboard({ auth }) {
             });
             closeEditModal();
             setSelectedShiftIds([]);
-            setIsBulkMode(false);
             fetchAdminData();
             showFlash('選択したシフトを一括確定しました');
         } catch (error) {
@@ -278,7 +276,6 @@ export default function AdminDashboard({ auth }) {
             });
             closeEditModal();
             setSelectedShiftIds([]);
-            setIsBulkMode(false);
             fetchAdminData();
             showFlash('選択したシフトを仮シフトに変更しました');
         } catch (error) {
@@ -307,7 +304,6 @@ export default function AdminDashboard({ auth }) {
             } else if (selectedShiftIds.length > 0) {
                 await axios.delete('/admin/shifts/bulk-reject', { data: { ids: selectedShiftIds } });
                 setSelectedShiftIds([]);
-                setIsBulkMode(false);
             } else {
                 setIsRejectConfirmOpen(false);
                 return;
