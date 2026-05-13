@@ -87,17 +87,30 @@ export default function ShiftCalendar({ shifts = [], onDateClick, selectedDates 
                             <div className="text-xs text-gray-500">{format(day, 'd')}</div>
 
                             {shift && (
-                                <div className={`mt-1 p-1 rounded text-[10px] border ${
+                                <div className={`mt-1 p-1 rounded text-[10px] border flex flex-col items-center text-center sm:block sm:text-left ${
                                     shift.admin_status === 'approved'
                                         ? 'bg-green-50 text-green-700 border-green-300' // 確定：緑
-                                        : (shift.status === 'work' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-blue-100 text-blue-700 border-blue-200') // 希望：薄色
+                                        : 'bg-blue-100 text-blue-700 border-blue-200'  // 希望：薄色
                                 }`}>
                                     <div className="font-bold">
                                         {shift.admin_status === 'approved' ? '確定' : '申請中'}
                                     </div>
-                                    <div>
-                                        {shift.status === 'work' ? `${shift.start_time?.substring(0, 5)}〜${shift.end_time?.substring(0, 5)}` : '休み'}
-                                    </div>
+                                    {shift.status === 'work' ? (
+                                        <>
+                                            {/* SP: 縦表記 (18:00 / | / 23:00) */}
+                                            <div className="flex flex-col items-center sm:hidden">
+                                                <span>{shift.start_time?.substring(0, 5)}</span>
+                                                <span className="opacity-50 leading-none">|</span>
+                                                <span>{shift.end_time?.substring(0, 5)}</span>
+                                            </div>
+                                            {/* PC: 横表記（修正前のまま） */}
+                                            <div className="hidden sm:block">
+                                                {shift.start_time?.substring(0, 5)}〜{shift.end_time?.substring(0, 5)}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div>休み</div>
+                                    )}
                                 </div>
                             )}
                         </div>
