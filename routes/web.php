@@ -20,6 +20,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 従業員用
     Route::post('/shifts', [ShiftController::class, 'store'])->name('shifts.store');
     Route::get('/shifts', [ShiftController::class, 'index'])->name('shifts.index');
+    Route::delete('/shifts/bulk-withdraw', [ShiftController::class, 'bulkDestroy'])->name('shifts.bulkDestroy');
+    Route::put('/shifts/{id}', [ShiftController::class, 'update'])->whereNumber('id')->name('shifts.update');
+    Route::delete('/shifts/{id}', [ShiftController::class, 'destroy'])->whereNumber('id')->name('shifts.destroy');
 
     // 店長用 - マトリックス・申請一覧
     Route::get('/admin/shifts', [ShiftController::class, 'adminIndex'])->name('admin.shifts.index');

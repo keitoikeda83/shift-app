@@ -18,6 +18,15 @@ class ShiftController extends Controller
         $dates = $request->has('dates') ? $request->dates : [$request->date];
 
         foreach ($dates as $date) {
+            // 既存シフトが draft/approved の場合はスキップ（店長対応中・確定済みのため）
+            // UI 側でも制限しているが、API 直叩きへの防衛
+            $existing = Shift::where('user_id', auth()->id())
+                ->where('date', $date)
+                ->first();
+            if ($existing && $existing->admin_status !== 'pending') {
+                continue;
+            }
+
             Shift::updateOrCreate(
                 [
                     'user_id' => auth()->id(),
@@ -41,6 +50,64 @@ class ShiftController extends Controller
     public function index()
     {
         return response()->json(Shift::where('user_id', auth()->id())->get());
+    }
+
+    /**
+     * 【従業員】自分の pending シフトを編集する
+     * draft/approved は編集不可（店長対応中・確定済みのため）
+     */
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:work,off',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+        ]);
+
+        $shift = Shift::where('user_id', auth()->id())
+            ->where('admin_status', 'pending')
+            ->findOrFail($id);
+
+        $shift->update([
+            'status' => $validated['status'],
+            'start_time' => $validated['status'] === 'work' ? ($validated['start_time'] ?? null) : null,
+            'end_time' => $validated['status'] === 'work' ? ($validated['end_time'] ?? null) : null,
+        ]);
+
+        return redirect()->back();
+    }
+
+    /**
+     * 【従業員】自分の pending シフトを取り下げる（論理削除）
+     */
+    public function destroy($id)
+    {
+        $shift = Shift::where('user_id', auth()->id())
+            ->where('admin_status', 'pending')
+            ->findOrFail($id);
+
+        $shift->delete();
+
+        return redirect()->back();
+    }
+
+    /**
+     * 【従業員】自分の pending シフトを一括取り下げる（論理削除）
+     * pending 以外（draft/approved）は対象外
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        Shift::where('user_id', auth()->id())
+            ->where('admin_status', 'pending')
+            ->whereIn('id', $validated['ids'])
+            ->delete();
+
+        return redirect()->back();
     }
 
     /**

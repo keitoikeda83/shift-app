@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, addMonths, subMonths, isBefore, startOfDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-export default function ShiftCalendar({ shifts = [], onDateClick, selectedDates = [] }) {
+export default function ShiftCalendar({ shifts = [], onDateClick, selectedDates = [], isBulkMode = false }) {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [touchStart, setTouchStart] = useState({ x: null, y: null });
     const [touchEnd, setTouchEnd] = useState({ x: null, y: null });
@@ -62,32 +62,33 @@ export default function ShiftCalendar({ shifts = [], onDateClick, selectedDates 
                     const isSelectedMonth = isSameMonth(day, monthStart);
                     // その日が「今日の0時0分」より前かどうかを判定
                     const isPast = isBefore(day, startOfDay(new Date()));
-                    // すでに申請済み（確定・未確定問わずシフトデータが存在する）かどうかを判定
-                    const isAlreadyApplied = !!shift;
-                    // クリック（申請）できない条件の統合
-                    const isDisabled = isPast || isAlreadyApplied;
+                    // 申請中（pending）は編集可、draft/approved は店長対応中・確定済みでロック
+                    const isPending = shift?.admin_status === 'pending';
+                    const isLocked = !!shift && !isPending;
+                    const isDisabled = isPast || isLocked;
 
                     // その日が「一括選択」で選ばれているか判定
                     const isSelected = selectedDates.some(d => format(d, 'yyyy-MM-dd') === dateStr);
 
                     return (
-                        <div 
+                        <div
                             key={dateStr}
                             // 申請不可でなければクリックイベント（モーダルを開く）を発火
                             onClick={() => !isDisabled && onDateClick(day)}
                             // 状態に応じてカーソルを変更する
                             className={`min-h-[100px] border-b border-r p-1 transition-colors ${
-                                isPast ? 'cursor-not-allowed text-gray-300' : 
-                                isAlreadyApplied ? 'cursor-default' : 
-                                isSelected ? 'bg-blue-100 cursor-pointer' : // 選ばれている時は青色にする
-                                'cursor-pointer hover:bg-blue-50'
+                                isPast ? 'cursor-not-allowed text-gray-300' :
+                                isLocked ? 'cursor-default' :
+                                isSelected
+                                    ? `cursor-pointer ring-2 ring-blue-500 ring-inset ${shift ? '' : 'bg-blue-100'}` // 選ばれている時は青リング（空セルは塗りも）
+                                    : 'cursor-pointer hover:bg-blue-50'
                             } ${!isSelectedMonth ? 'opacity-30' : ''}`}
                         >
                             <div className="text-xs text-gray-500">{format(day, 'd')}</div>
-                            
+
                             {shift && (
                                 <div className={`mt-1 p-1 rounded text-[10px] border ${
-                                    shift.admin_status === 'approved' 
+                                    shift.admin_status === 'approved'
                                         ? 'bg-green-50 text-green-700 border-green-300' // 確定：緑
                                         : (shift.status === 'work' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-blue-100 text-blue-700 border-blue-200') // 希望：薄色
                                 }`}>
