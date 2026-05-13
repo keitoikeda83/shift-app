@@ -213,7 +213,7 @@ export default function Dashboard() {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">シフト表</h2>}>
+        <AuthenticatedLayout>
             <Head title="シフト表" />
 
             {flashMessage && (
@@ -224,17 +224,18 @@ export default function Dashboard() {
                 </div>
             )}
 
-            <div className="py-8">
+            <div className="py-3 sm:py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    
-                    {/* 一括申請モードのスイッチ */}
-                    <div className="flex justify-end mb-4 px-4 sm:px-0">
+
+                    {/* タイトル + 一括選択スイッチを 1 行に集約（縦スペース節約） */}
+                    <div className="flex justify-between items-center mb-3 px-4 sm:px-0">
+                        <h2 className="font-semibold text-lg sm:text-xl text-gray-800">シフト表</h2>
                         <label className="flex items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-sm border">
                             <span className="mr-3 text-sm font-bold text-gray-700">一括選択</span>
                             <div className="relative">
                                 <input type="checkbox" className="sr-only" checked={isBulkMode} onChange={() => {
                                     setIsBulkMode(!isBulkMode);
-                                    setSelectedDates([]); 
+                                    setSelectedDates([]);
                                 }} />
                                 <div className={`block w-12 h-6 rounded-full transition-colors ${isBulkMode ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                                 <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isBulkMode ? 'transform translate-x-6' : ''}`}></div>
