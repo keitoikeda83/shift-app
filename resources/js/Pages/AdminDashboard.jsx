@@ -92,9 +92,8 @@ export default function AdminDashboard({ auth }) {
     // セルクリック時の処理
     const handleCellClick = ({ shift, employee, date }) => {
         if (isBulkMode) {
-            // 一括選択モード: pending/draft のみ選択可能
+            // 一括選択モード: pending/draft/approved すべて選択可能
             if (!shift) return;
-            if (shift.admin_status === 'approved') return;
             setSelectedShiftIds(prev =>
                 prev.includes(shift.id)
                     ? prev.filter(id => id !== shift.id)
@@ -685,7 +684,7 @@ export default function AdminDashboard({ auth }) {
                                                                     }
 
                                                                     const meta = STATUS_META[shift.admin_status] ?? STATUS_META.pending;
-                                                                    const isSelectable = isBulkMode && shift.admin_status !== 'approved';
+                                                                    const isSelectable = isBulkMode;
                                                                     const isSelected = selectedShiftIds.includes(shift.id);
                                                                     const clickable = !isBulkMode || isSelectable;
 
@@ -1035,11 +1034,11 @@ export default function AdminDashboard({ auth }) {
                     <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
                         {/* 左: 削除・後退アクション */}
                         <div className="flex flex-wrap items-center gap-3">
-                            {modalMode === 'view' && editingShift && (
+                            {modalMode === 'view' && editingShift && editingShift.admin_status !== 'draft' && (
                                 <DangerButton type="button" onClick={requestDelete}>削除</DangerButton>
                             )}
                             {modalMode === 'view' && editingShift?.admin_status === 'draft' && (
-                                <SecondaryButton type="button" onClick={submitMoveToPending}>未確定に戻す</SecondaryButton>
+                                <DangerButton type="button" onClick={submitMoveToPending}>未確定に戻す</DangerButton>
                             )}
                         </div>
 
@@ -1083,20 +1082,26 @@ export default function AdminDashboard({ auth }) {
 
             {/* 一括選択 フローティング: 「主要1 + 副次」に整理
                  - 全て draft → 主要 = 確定 / 副次 = 未確定に戻す
+                 - 全て approved → 主要 = 仮シフトに戻す / 副次 = 削除
                  - pending を含む(or 混在) → 主要 = 仮シフト化（必ず draft を経由させる） */}
             {isBulkMode && selectedShiftIds.length > 0 && (() => {
                 const allDraft = selectedShifts.length > 0 && selectedShifts.every(s => s.admin_status === 'draft');
+                const allApproved = selectedShifts.length > 0 && selectedShifts.every(s => s.admin_status === 'approved');
                 return (
                     <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-6 py-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-blue-200 z-[90] flex items-center space-x-3 w-max">
                         <span className="font-bold text-gray-700 text-sm">{selectedShiftIds.length}件を選択中</span>
-                        <DangerButton onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
-                        {allDraft && (
-                            <SecondaryButton onClick={submitBulkMoveToPending}>未確定に戻す</SecondaryButton>
-                        )}
                         {allDraft ? (
-                            <PrimaryButton onClick={openBulkApproveModal}>シフト確定</PrimaryButton>
+                            <>
+                                <DangerButton onClick={submitBulkMoveToPending}>未確定に戻す</DangerButton>
+                                <PrimaryButton onClick={openBulkApproveModal}>シフト確定</PrimaryButton>
+                            </>
                         ) : (
-                            <PrimaryButton onClick={openBulkToDraftModal}>仮シフト化</PrimaryButton>
+                            <>
+                                <DangerButton onClick={() => setIsRejectConfirmOpen(true)}>削除</DangerButton>
+                                <PrimaryButton onClick={openBulkToDraftModal}>
+                                    {allApproved ? '仮シフトに戻す' : '仮シフト化'}
+                                </PrimaryButton>
+                            </>
                         )}
                     </div>
                 );
