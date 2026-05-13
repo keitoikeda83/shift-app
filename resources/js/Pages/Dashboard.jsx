@@ -297,35 +297,34 @@ export default function Dashboard() {
                         )}
                     </div>
                     {/* アクションボタン配置:
-                         - スマホ: 縦積み（取り下げ→キャンセル→主要、主要は最下部で親指リーチ）
-                         - PC: 横並び（取り下げ左、キャンセル+主要右） */}
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                         - スマホ縦積み（上→下）: 主要 → 取り下げ → キャンセル
+                         - PC 横並び（左→右）: 取り下げ ⋯ キャンセル + 主要
+                         order ユーティリティで端末ごとの表示順を制御 */}
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                         {editingShift && (
                             <DangerButton
                                 type="button"
                                 onClick={requestWithdraw}
-                                className="w-full justify-center sm:w-auto"
+                                className="order-2 sm:order-1 w-full justify-center sm:w-auto"
                             >
                                 申請を取り下げる
                             </DangerButton>
                         )}
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:ml-auto">
-                            <SecondaryButton
-                                type="button"
-                                onClick={closeModal}
-                                className="w-full justify-center sm:w-auto"
-                            >
-                                キャンセル
-                            </SecondaryButton>
-                            <PrimaryButton className="w-full justify-center sm:w-auto">
-                                {editingShift
-                                    ? '更新する'
-                                    : isBulkMode && bulkAllPending
-                                        ? 'まとめて更新する'
-                                        : '希望を送信'
-                                }
-                            </PrimaryButton>
-                        </div>
+                        <SecondaryButton
+                            type="button"
+                            onClick={closeModal}
+                            className="order-3 sm:order-2 sm:ml-auto w-full justify-center sm:w-auto"
+                        >
+                            キャンセル
+                        </SecondaryButton>
+                        <PrimaryButton className="order-1 sm:order-3 w-full justify-center sm:w-auto">
+                            {editingShift
+                                ? '更新する'
+                                : isBulkMode && bulkAllPending
+                                    ? 'まとめて更新する'
+                                    : '希望を送信'
+                            }
+                        </PrimaryButton>
                     </div>
                 </form>
             </Modal>
@@ -338,9 +337,10 @@ export default function Dashboard() {
                         <p>この申請を取り下げます。</p>
                         <p className="mt-2 text-xs text-gray-500">※取り下げ後にもう一度申請することが可能です。</p>
                     </div>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={cancelWithdraw}>キャンセル</SecondaryButton>
-                        <DangerButton onClick={executeWithdraw}>取り下げる</DangerButton>
+                    {/* スマホ: 縦積み（上=取り下げる主要 / 下=キャンセル） / PC: 横並び右寄せ */}
+                    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <SecondaryButton onClick={cancelWithdraw} className="w-full justify-center sm:w-auto">キャンセル</SecondaryButton>
+                        <DangerButton onClick={executeWithdraw} className="w-full justify-center sm:w-auto">取り下げる</DangerButton>
                     </div>
                 </div>
             </Modal>
@@ -353,9 +353,10 @@ export default function Dashboard() {
                         <p><strong>{bulkPendingShifts.length}件</strong> の申請を取り下げます。</p>
                         <p className="mt-2 text-xs text-gray-500">※取り下げ後にもう一度申請することが可能です。</p>
                     </div>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsBulkWithdrawConfirmOpen(false)}>キャンセル</SecondaryButton>
-                        <DangerButton onClick={executeBulkWithdraw}>取り下げる</DangerButton>
+                    {/* スマホ: 縦積み（上=取り下げる主要 / 下=キャンセル） / PC: 横並び右寄せ */}
+                    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <SecondaryButton onClick={() => setIsBulkWithdrawConfirmOpen(false)} className="w-full justify-center sm:w-auto">キャンセル</SecondaryButton>
+                        <DangerButton onClick={executeBulkWithdraw} className="w-full justify-center sm:w-auto">取り下げる</DangerButton>
                     </div>
                 </div>
             </Modal>
